@@ -2,6 +2,12 @@
 
 A bunch of command line tools that is used by multiple developers within dfuse.
 
+#### Design Principles
+
+- Command line helper utilities
+- Accepts both standard input & command line arguments
+- Script friendly output (one line of input equals one line of output is a good goal)
+
 #### Install
 
 To install the Golang utilities, simply use `./scripts/install_all.sh`.
@@ -58,7 +64,7 @@ ABDG
 
 #### Caveats
 
-The standard input is fully consumed than split into lines and then process. So in
-it's current form, this project does not supports streaming from big load of data.
+The standard input is fully consumed then split into lines and then processedd. So in
+its current form, this project does not support streaming from big load of data.
 
 PRs welcome!
