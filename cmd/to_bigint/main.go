@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -13,6 +14,7 @@ import (
 )
 
 var digitsRegexp = regexp.MustCompile("^[0-9]+$")
+var hexRegexp = regexp.MustCompile("^[0-9a-fA-F]+$")
 var spacesRegexp = regexp.MustCompile("\\s")
 
 var asStringFlag = flag.Bool("s", false, "Encode the string and not it's representation")
@@ -39,6 +41,17 @@ func main() {
 func toBigInt(element string) string {
 	if digitsRegexp.MatchString(element) {
 		return element
+	}
+
+	if hexRegexp.MatchString(element) {
+		if len(element)%2 != 0 {
+			element = "0" + element
+		}
+
+		out, err := hex.DecodeString(element)
+		cli.NoError(err, "invalid hex")
+
+		return new(big.Int).SetBytes(out).String()
 	}
 
 	base64Bytes, err := base64.StdEncoding.DecodeString(element)
