@@ -29,7 +29,6 @@ func main() {
 
 		elements = spacesRegexp.Split(string(stdin), -1)
 	} else {
-		cli.Ensure(len(os.Args) >= 2, "You must provide at least one snapshot filename")
 		elements = os.Args[1:]
 	}
 
@@ -43,15 +42,10 @@ func toBigInt(element string) string {
 		return element
 	}
 
-	// TODO: Handle where a decimal is wrapped using `"` which mean something else I don't recall
 	base64Bytes, err := base64.StdEncoding.DecodeString(element)
 	if err == nil {
 		return new(big.Int).SetBytes(base64Bytes).String()
 	}
-
-	// TODO: Old Ruby code had
-	//puts input.unpack('H*')
-	//     # puts input.unpack('H*').join.scan(/../).map { |x| "\\x#{x}" }.join
 
 	return element
 }

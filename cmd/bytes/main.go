@@ -31,7 +31,6 @@ func main() {
 
 		elements = spacesRegexp.Split(string(stdin), -1)
 	} else {
-		cli.Ensure(len(os.Args) >= 2, "You must provide at least one snapshot filename")
 		elements = os.Args[1:]
 	}
 
