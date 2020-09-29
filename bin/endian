@@ -1,0 +1,24 @@
+#!/bin/bash
+
+value=""
+
+if [ -t 0 ]; then 
+    value=$1
+else
+    value=`cat /dev/stdin`
+fi
+
+i=${#value}
+
+if [[ $value == 0x* ]]; then
+    value=${value:2}
+    echo -n 0x
+fi
+
+while [ $i -gt 0 ]
+do
+    i=$[$i-2]
+    echo -n ${value:$i:2}
+done
+
+echo

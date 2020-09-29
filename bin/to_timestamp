@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+
+require_relative './utils.rb'
+require('timeliness')
+
+def main
+    argument_reader do |argument|
+        process_input(argument)
+    end
+end
+
+def process_input(input)
+    date = Timeliness.parse(input)
+    if date == nil
+        puts "Ignoring '#{input}', unable to parse as date"
+        return
+    end
+
+    puts date.to_time.to_i
+end
+
+main
