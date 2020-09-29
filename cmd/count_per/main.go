@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dfuse-io/derr"
 	"github.com/dfuse-io/tooling/cli"
 	"go.uber.org/zap"
 )
@@ -54,7 +53,7 @@ func main() {
 	flag.Parse()
 
 	fi, err := os.Stdin.Stat()
-	derr.Check("unable to stat stdin", err)
+	cli.NoError(err, "unable to stat stdin")
 
 	var reader io.Reader
 	if (fi.Mode() & os.ModeCharDevice) == 0 {

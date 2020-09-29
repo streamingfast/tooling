@@ -9,7 +9,6 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/dfuse-io/derr"
 	"github.com/dfuse-io/tooling/cli"
 )
 
@@ -20,7 +19,7 @@ var asStringFlag = flag.Bool("s", false, "Encode the string and not it's represe
 
 func main() {
 	fi, err := os.Stdin.Stat()
-	derr.Check("unable to stat stdin", err)
+	cli.NoError(err, "unable to stat stdin")
 
 	var elements []string
 	if (fi.Mode() & os.ModeCharDevice) == 0 {

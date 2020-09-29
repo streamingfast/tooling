@@ -10,7 +10,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/dfuse-io/derr"
 	"github.com/dfuse-io/tooling/cli"
 )
 
@@ -21,7 +20,7 @@ var asStringFlag = flag.Bool("s", false, "Encode the string and not it's represe
 
 func main() {
 	fi, err := os.Stdin.Stat()
-	derr.Check("unable to stat stdin", err)
+	cli.NoError(err, "unable to stat stdin")
 
 	var elements []string
 	if (fi.Mode() & os.ModeCharDevice) == 0 {
@@ -39,6 +38,10 @@ func main() {
 }
 
 func toHex(element string) string {
+	if *asStringFlag {
+		return hex.EncodeToString([]byte(element)[1 : len(element)-1])
+	}
+
 	if digitsRegexp.MatchString(element) {
 		number, _ := strconv.ParseInt(element, 10, 64)
 		hex := strconv.FormatInt(number, 16)
