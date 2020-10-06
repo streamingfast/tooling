@@ -2,22 +2,13 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/hex"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
-	"regexp"
 
 	"github.com/dfuse-io/tooling/cli"
 )
-
-var digitsRegexp = regexp.MustCompile("^[0-9]+$")
-var hexRegexp = regexp.MustCompile("^[0-9a-fA-F]+$")
-var spacesRegexp = regexp.MustCompile("\\s")
-
-var asStringFlag = flag.Bool("s", false, "Encode the string and not it's representation")
 
 func main() {
 	fi, err := os.Stdin.Stat()
@@ -28,7 +19,7 @@ func main() {
 		stdin, err := ioutil.ReadAll(os.Stdin)
 		cli.NoError(err, "reading from stdin")
 
-		elements = spacesRegexp.Split(string(stdin), -1)
+		elements = cli.SpacesRegexp.Split(string(stdin), -1)
 	} else {
 		elements = os.Args[1:]
 	}
@@ -39,16 +30,12 @@ func main() {
 }
 
 func toBigInt(element string) string {
-	if digitsRegexp.MatchString(element) {
+	if cli.DecRegexp.MatchString(element) {
 		return element
 	}
 
-	if hexRegexp.MatchString(element) {
-		if len(element)%2 != 0 {
-			element = "0" + element
-		}
-
-		out, err := hex.DecodeString(element)
+	if cli.HexRegexp.MatchString(element) {
+		out, err := cli.DecodeHex(element)
 		cli.NoError(err, "invalid hex")
 
 		return new(big.Int).SetBytes(out).String()

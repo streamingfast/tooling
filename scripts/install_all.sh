@@ -13,6 +13,8 @@ main() {
   done
   shift $((OPTIND-1))
 
+  set -e
+
   echo "Installing all command line utilities found in './cmd'"
   for folder in `ls ./cmd`; do
     go install "./cmd/$folder"

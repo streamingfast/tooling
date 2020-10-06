@@ -7,14 +7,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"regexp"
 	"strconv"
 
 	"github.com/dfuse-io/tooling/cli"
 )
-
-var digitsRegexp = regexp.MustCompile("^[0-9]+$")
-var spacesRegexp = regexp.MustCompile("\\s")
 
 var asStringFlag = flag.Bool("s", false, "Encode the string and not it's representation")
 
@@ -27,7 +23,7 @@ func main() {
 		stdin, err := ioutil.ReadAll(os.Stdin)
 		cli.NoError(err, "reading from stdin")
 
-		elements = spacesRegexp.Split(string(stdin), -1)
+		elements = cli.SpacesRegexp.Split(string(stdin), -1)
 	} else {
 		elements = os.Args[1:]
 	}
@@ -42,7 +38,7 @@ func toHex(element string) string {
 		return hex.EncodeToString([]byte(element)[1 : len(element)-1])
 	}
 
-	if digitsRegexp.MatchString(element) {
+	if cli.DecRegexp.MatchString(element) {
 		number, _ := strconv.ParseInt(element, 10, 64)
 		hex := strconv.FormatInt(number, 16)
 		if len(hex)%2 == 1 {

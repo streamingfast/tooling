@@ -38,26 +38,32 @@ bytes 100000
 bytes 100000000
 100.00 MB
 
-to_base64 abfe0102       # <-- As hexadecimal
+to_base64 abfe0102           # <-- As hexadecimal
 q/4BAg==
 
-to_base64 myname         # <-- As string
+to_base64 myname             # <-- As string
 bXluYW1l
 
 to_bigint 11e1a300
 236771705847092
 
-to_hex 123456            # <-- As decimal
+to_hex 123456                # <-- As decimal
 01e240
 
-to_hex q/4BAg==          # <-- As base64
+to_hex q/4BAg==              # <-- As base64
 abfe0102
 
-to_hex -s ascii          # <-- As string
+to_hex -s ascii              # <-- As string
 6173636969
 
-to_hex '"ascii"'         # <-- As string
+to_hex '"ascii"'             # <-- As string
 6173636969
+
+to_dec 01e240
+123456
+
+to_dec 21e19e0c9bab2400000   # <-- Arbitrary precision
+10000000000000000000000
 
 to_lower ABdg
 abdg
