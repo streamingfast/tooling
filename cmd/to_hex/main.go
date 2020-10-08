@@ -15,6 +15,8 @@ import (
 var asStringFlag = flag.Bool("s", false, "Encode the string and not it's representation")
 
 func main() {
+	flag.Parse()
+
 	fi, err := os.Stdin.Stat()
 	cli.NoError(err, "unable to stat stdin")
 
@@ -25,7 +27,7 @@ func main() {
 
 		elements = cli.SpacesRegexp.Split(string(stdin), -1)
 	} else {
-		elements = os.Args[1:]
+		elements = flag.Args()
 	}
 
 	for _, element := range elements {
