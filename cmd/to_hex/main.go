@@ -37,7 +37,7 @@ func main() {
 
 func toHex(element string) string {
 	if *asStringFlag {
-		return hex.EncodeToString([]byte(element)[1 : len(element)-1])
+		return hex.EncodeToString([]byte(element))
 	}
 
 	if cli.DecRegexp.MatchString(element) {
