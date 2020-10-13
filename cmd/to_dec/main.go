@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"math/big"
@@ -9,7 +10,11 @@ import (
 	"github.com/dfuse-io/tooling/cli"
 )
 
+var reversedFlag = flag.Bool("r", false, "Decode assuming the input value is a reverted number")
+
 func main() {
+	flag.Parse()
+
 	fi, err := os.Stdin.Stat()
 	cli.NoError(err, "unable to stat stdin")
 
@@ -20,7 +25,7 @@ func main() {
 
 		elements = cli.SpacesRegexp.Split(string(stdin), -1)
 	} else {
-		elements = os.Args[1:]
+		elements = flag.Args()
 	}
 
 	for _, element := range elements {
@@ -33,7 +38,18 @@ func toDec(element string) string {
 		value, err := cli.DecodeHex(element)
 		cli.NoError(err, "invalid number %q", element)
 
-		return new(big.Int).SetBytes(value).String()
+		bigValue := new(big.Int).SetBytes(value)
+
+		if *reversedFlag && bigValue.BitLen() > 0 {
+			max := new(big.Int).Lsh(big.NewInt(1), uint(bigValue.BitLen()-1))
+			for i := 0; i < bigValue.BitLen(); i++ {
+				max.SetBit(max, i, 1)
+			}
+
+			bigValue = new(big.Int).Sub(max, bigValue)
+		}
+
+		return bigValue.String()
 	}
 
 	return element
