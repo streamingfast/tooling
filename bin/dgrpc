@@ -46,7 +46,7 @@ main() {
     exit 0
   fi
 
-  if [[ -n "$data" ]]; then
+  if [[ -n "$data" && "$data" != "null" ]]; then
     echo "$data"
   else
     printf "$result"
