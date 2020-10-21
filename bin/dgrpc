@@ -21,7 +21,7 @@ main() {
     usage_error "file '$file' does not exist"
   fi
 
-  content=`cat test.graphql | tr -d '\n' | sed 's/"/\\\\"/g'`
+  content=`cat "$file" | tr -d '\n' | sed 's/"/\\\\"/g'`
   query="{\"query\":\"$content\"}"
   if [[ $2 != "" ]]; then
     variables=`printf "$2" | tr -d '\n'`
