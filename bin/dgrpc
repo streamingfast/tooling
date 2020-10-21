@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+
+raw=""
+
+main() {
+  while getopts "hr" opt; do
+    case $opt in
+      h) usage && exit 0;;
+      r) raw=true;;
+      \?) usage_error "Invalid option: -$OPTARG";;
+    esac
+  done
+  shift $((OPTIND-1))
+
+  file="$1"
+  if [[ $file == "" ]]; then
+    usage_error "parameter <file> is required"
+  fi
+
+  if [[ ! -f $file ]]; then
+    usage_error "file '$file' does not exist"
+  fi
+
+  content=`cat test.graphql | tr -d '\n' | sed 's/"/\\\\"/g'`
+  query="{\"query\":\"$content\"}"
+  if [[ $2 != "" ]]; then
+    variables=`printf "$2" | tr -d '\n'`
+    query="{\"query\":\"$content\",\"variables\":$variables}"
+  fi
+
+  result=`grpcurl -H "Authorization: Bearer $DFUSE_API_TOKEN" -d "$query" "$DFUSE_API_NETWORK:443" dfuse.graphql.v1.GraphQL/Execute`
+  exit_code=$?
+  if [[ $exit_code != 0 ]]; then
+    printf "$result"
+    exit $exit_code
+  fi
+
+  if [[ $raw == true ]]; then
+    printf "$result"
+    exit 0
+  fi
+
+  data=`echo "$result" | jq -r .data 2>&1`
+  if [[ $? != 0 ]]; then
+    printf "$result"
+    exit 0
+  fi
+
+  if [[ -n "$data" ]]; then
+    echo "$data"
+  else
+    printf "$result"
+  fi
+}
+
+usage_error() {
+  message="$1"
+  exit_code="$2"
+
+  echo "ERROR: $message"
+  echo ""
+  usage
+  exit ${exit_code:-1}
+}
+
+usage() {
+  echo "usage: dgrpc [-r] <file> [<variables>]"
+  echo ""
+  echo "Query/stream dfuse GraphQL over gRPC interface using the following file and variables"
+  echo "if present."
+  echo ""
+  echo "The scripts expect that DFUSE_API_TOKEN environment variable is set to a valid dfuse API"
+  echo "token value and that DFUSE_API_NETWORK environment variable points to hostname where to"
+  echo "reach the service."
+  echo ""
+  echo "The script reads the file in argument, must be a valid GraphQL document, turns it into"
+  echo "a proper GraphQL over gRPC query, add to this query object the <variables> argument (as-is,"
+  echo "no transformation is done, so it must be valid JSON) and send the query to the server".
+  echo ""
+  echo ""
+  echo "If the response has '.data' field, the script extracts the content from it and returns"
+  echo "it as valid JSON to the caller. Otherwise, the response is returned as-is if the '.data'"
+  echo "field cannot be determined."
+  echo ""
+  echo "If the '-r' (raw) option, the output of 'grpcurl' is returned without any transformation"
+  echo "like described above."
+  echo ""
+  echo "Options"
+  echo "    -r          Do not perform any transformation on grpcurl output and return it as-is"
+  echo "    -h          Display help about this script"
+  echo ""
+  echo "Requirements"
+  echo " - grpcurl"
+  echo " - jq"
+  echo ""
+}
+
+main "$@"
