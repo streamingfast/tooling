@@ -6,8 +6,8 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"os"
-	"strconv"
 
 	"github.com/dfuse-io/tooling/cli"
 )
@@ -41,8 +41,11 @@ func toHex(element string) string {
 	}
 
 	if cli.DecRegexp.MatchString(element) {
-		number, _ := strconv.ParseInt(element, 10, 64)
-		hex := strconv.FormatInt(number, 16)
+		value := new(big.Int)
+		value, success := value.SetString(element, 10)
+		cli.Ensure(success, "number %q is invalid", element)
+
+		hex := hex.EncodeToString(value.Bytes())
 		if len(hex)%2 == 1 {
 			hex = "0" + hex
 		}
