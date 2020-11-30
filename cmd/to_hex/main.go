@@ -10,9 +10,11 @@ import (
 	"os"
 
 	"github.com/dfuse-io/tooling/cli"
+	"github.com/eoscanada/eos-go/btcsuite/btcutil/base58"
 )
 
-var asStringFlag = flag.Bool("s", false, "Encode the string and not it's representation")
+var asStringFlag = flag.Bool("s", false, "Decode the string and not it's representation")
+var asBase58Flag = flag.Bool("b58", false, "Decode the input as a base58 representation")
 
 func main() {
 	flag.Parse()
@@ -38,6 +40,10 @@ func main() {
 func toHex(element string) string {
 	if *asStringFlag {
 		return hex.EncodeToString([]byte(element))
+	}
+
+	if *asBase58Flag {
+		return hex.EncodeToString(base58.Decode(element))
 	}
 
 	if cli.DecRegexp.MatchString(element) {
