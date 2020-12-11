@@ -5,9 +5,7 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"math/big"
-	"os"
 
 	"github.com/dfuse-io/tooling/cli"
 	"github.com/eoscanada/eos-go/btcsuite/btcutil/base58"
@@ -19,25 +17,17 @@ var asBase58Flag = flag.Bool("b58", false, "Decode the input as a base58 represe
 func main() {
 	flag.Parse()
 
-	fi, err := os.Stdin.Stat()
-	cli.NoError(err, "unable to stat stdin")
-
-	var elements []string
-	if (fi.Mode() & os.ModeCharDevice) == 0 {
-		stdin, err := ioutil.ReadAll(os.Stdin)
-		cli.NoError(err, "reading from stdin")
-
-		elements = cli.SpacesRegexp.Split(string(stdin), -1)
-	} else {
-		elements = flag.Args()
-	}
-
-	for _, element := range elements {
+	scanner := cli.NewArgumentScanner()
+	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toHex(element))
 	}
 }
 
 func toHex(element string) string {
+	if element == "" {
+		return ""
+	}
+
 	if *asStringFlag {
 		return hex.EncodeToString([]byte(element))
 	}
