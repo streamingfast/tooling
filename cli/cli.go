@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -52,7 +53,12 @@ func NewArgumentScanner() ArgumentScanner {
 		return (*bufioArgumentScanner)(bufio.NewScanner(os.Stdin))
 	}
 
-	slice := stringSliceArgumentScanner(os.Args[1:])
+	args := os.Args[1:]
+	if flag.Parsed() {
+		args = flag.Args()
+	}
+
+	slice := stringSliceArgumentScanner(args)
 	return &slice
 }
 
