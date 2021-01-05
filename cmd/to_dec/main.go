@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"math/big"
+	"regexp"
 
 	"github.com/dfuse-io/tooling/cli"
 )
@@ -18,6 +19,8 @@ func main() {
 		fmt.Println(toDec(element))
 	}
 }
+
+var scientificNotationRegexp = regexp.MustCompile(`^([0-9]+)?\.[0-9]+(e|E)\+[0-9]+$`)
 
 func toDec(element string) string {
 	if cli.HexRegexp.MatchString(element) {
@@ -35,6 +38,14 @@ func toDec(element string) string {
 			bigValue = new(big.Int).Sub(max, bigValue)
 		}
 
+		return bigValue.String()
+	}
+
+	if scientificNotationRegexp.MatchString(element) {
+		flt, _, err := big.ParseFloat(element, 10, 0, big.ToNearestEven)
+		cli.NoError(err, "invalid scientific notation %q", element)
+
+		bigValue, _ := flt.Int(new(big.Int))
 		return bigValue.String()
 	}
 
