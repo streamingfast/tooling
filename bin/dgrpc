@@ -32,8 +32,13 @@ main() {
 
   content=`cat "$file" | tr -d '\n' | sed 's/"/\\\\"/g'`
   query="{\"query\":\"$content\"}"
-  if [[ $3 != "" ]]; then
-    variables=`printf "$3" | tr -d '\n'`
+  if [[ "$3" != "" ]]; then
+    if [[ -f "$3" ]]; then
+      variables=`cat "$3" | tr -d '\n'`
+    else
+      variables=`printf "$3" | tr -d '\n'`
+    fi
+
     query="{\"query\":\"$content\",\"variables\":$variables}"
   fi
 
