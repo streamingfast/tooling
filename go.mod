@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/storage v1.0.0
 	github.com/eoscanada/eos-go v0.9.0
 	github.com/golang/protobuf v1.3.4 // indirect
+	github.com/manifoldco/promptui v0.8.0
 	github.com/mr-tron/base58 v1.2.0
 	go.opencensus.io v0.22.1 // indirect
 	go.uber.org/zap v1.14.0

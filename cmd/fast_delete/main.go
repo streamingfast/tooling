@@ -4,10 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"google.golang.org/api/iterator"
 	"os"
+	"path"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/manifoldco/promptui"
+	"google.golang.org/api/iterator"
 
 	"cloud.google.com/go/storage"
 )
@@ -29,19 +33,34 @@ func main() {
 	jobs := make(chan job, 1000)
 	var wg sync.WaitGroup
 
+	_, err := listFiles(bucket, objectPrefix, func(bucket string, f string) {
+		fmt.Println("gs://" + path.Join(bucket, f))
+	}, 5)
+
+	prompt := promptui.Prompt{
+		Label:     "Are you sure you want to delete these files and the next ones",
+		IsConfirm: true,
+	}
+
+	result, err := prompt.Run()
+	if err != nil && err != promptui.ErrAbort || !strings.HasPrefix(strings.ToLower(result), "y") {
+		fmt.Println("aborted")
+		os.Exit(1)
+	}
+
 	for w := 1; w <= 500; w++ {
 		wg.Add(1)
 		go worker(w, &wg, jobs)
 	}
 
 	fileCount := 0
-	_, err := listFiles(bucket, objectPrefix, func(bucket string, f string) {
+	_, err = listFiles(bucket, objectPrefix, func(bucket string, f string) {
 		fileCount++
 		jobs <- job{
 			bucket: bucket,
 			file:   f,
 		}
-	})
+	}, -1)
 	close(jobs)
 	if err != nil {
 		panic(err)
@@ -70,7 +89,7 @@ func worker(id int, wg *sync.WaitGroup, jobs <-chan job) {
 }
 
 // listFiles lists objects within specified bucket.
-func listFiles(bucket string, prefix string, f func(bucket string, file string)) ([]string, error) {
+func listFiles(bucket string, prefix string, f func(bucket string, file string), limit int) ([]string, error) {
 	// bucket := "bucket-name"
 	ctx, cancel := context.WithTimeout(context.Background(), 24*time.Hour)
 	defer cancel()
@@ -86,6 +105,9 @@ func listFiles(bucket string, prefix string, f func(bucket string, file string))
 	})
 	var files []string
 	for {
+		if limit > 0 && len(files) > limit {
+			return files, nil
+		}
 		attrs, err := it.Next()
 		if err == iterator.Done {
 			break
