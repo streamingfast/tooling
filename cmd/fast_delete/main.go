@@ -13,17 +13,18 @@ import (
 )
 
 func main() {
-
 	flag.Parse()
 
-	if len(os.Args) != 2 {
+	start := time.Now()
+
+	if len(os.Args) != 3 {
 		//"dfuseio-global-blocks-us", "sol-mainnet/v1-oneblock"
 		fmt.Println("Require argument [bucket] [object-prefix]")
 		os.Exit(0)
 	}
 
-	bucket := os.Args[0]
-	objectPrefix := os.Args[1]
+	bucket := os.Args[1]
+	objectPrefix := os.Args[2]
 
 	jobs := make(chan job, 1000)
 	var wg sync.WaitGroup
@@ -33,7 +34,9 @@ func main() {
 		go worker(w, &wg, jobs)
 	}
 
+	fileCount := 0
 	_, err := listFiles(bucket, objectPrefix, func(bucket string, f string) {
+		fileCount++
 		jobs <- job{
 			bucket: bucket,
 			file:   f,
@@ -46,6 +49,7 @@ func main() {
 
 	fmt.Println("Waiting ....")
 	wg.Wait()
+	fmt.Println("Deleted: ", fileCount, " objects in: ", time.Since(start))
 
 }
 
@@ -68,15 +72,14 @@ func worker(id int, wg *sync.WaitGroup, jobs <-chan job) {
 // listFiles lists objects within specified bucket.
 func listFiles(bucket string, prefix string, f func(bucket string, file string)) ([]string, error) {
 	// bucket := "bucket-name"
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 24*time.Hour)
+	defer cancel()
+
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("storage.NewClient: %v", err)
 	}
 	defer client.Close()
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second*200)
-	defer cancel()
 
 	it := client.Bucket(bucket).Objects(ctx, &storage.Query{
 		Prefix: prefix,
@@ -93,22 +96,19 @@ func listFiles(bucket string, prefix string, f func(bucket string, file string))
 		f(bucket, attrs.Name)
 		files = append(files, attrs.Name)
 	}
-	fmt.Println("ssss")
 	return files, nil
 }
 
 func deleteFile(bucket, object string) error {
 	// bucket := "bucket-name"
 	// object := "object-name"
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 24*time.Hour)
+	defer cancel()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		return fmt.Errorf("storage.NewClient: %v", err)
 	}
 	defer client.Close()
-
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
-	defer cancel()
 
 	o := client.Bucket(bucket).Object(object)
 	if err := o.Delete(ctx); err != nil {
