@@ -44,6 +44,12 @@ func toDec(element string) string {
 		return formatNumber(bigValue)
 	}
 
+	// So we handle humanize for decimal number correctly
+	if cli.DecRegexp.MatchString(element) {
+		bigValue, _ := new(big.Int).SetString(element, 10)
+		return formatNumber(bigValue)
+	}
+
 	if scientificNotationRegexp.MatchString(element) {
 		flt, _, err := big.ParseFloat(element, 10, 0, big.ToNearestEven)
 		cli.NoError(err, "invalid scientific notation %q", element)
