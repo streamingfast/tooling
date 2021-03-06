@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -94,4 +95,53 @@ func (s *stringSliceArgumentScanner) ScanArgument() (string, bool) {
 	value := slice[0]
 	*s = slice[1:]
 	return value, true
+}
+
+func ErrorUsage(usage func() string, message string, args ...interface{}) string {
+	return fmt.Sprintf(message+"\n\n"+usage(), args...)
+}
+
+func SetupFlag(usage func() string) {
+	flag.CommandLine.Usage = func() {
+		fmt.Print(usage())
+	}
+	flag.Parse()
+}
+
+func FlagUsage() string {
+	buf := bytes.NewBuffer(nil)
+	oldOutput := flag.CommandLine.Output()
+	defer func() { flag.CommandLine.SetOutput(oldOutput) }()
+
+	flag.CommandLine.SetOutput(buf)
+	flag.CommandLine.PrintDefaults()
+
+	return buf.String()
+}
+
+func AskForConfirmation(message string, args ...interface{}) bool {
+	for {
+		fmt.Printf(message+" ", args...)
+		var response string
+		_, err := fmt.Scanln(&response)
+		if err != nil {
+			panic(fmt.Errorf("unable to read user confirmation, are you in an interactive terminal: %w", err))
+		}
+
+		response = strings.ToLower(strings.TrimSpace(response))
+		for _, yesResponse := range []string{"y", "yes"} {
+			if response == yesResponse {
+				return true
+			}
+		}
+
+		for _, noResponse := range []string{"n", "no"} {
+			if response == noResponse {
+				return false
+			}
+		}
+
+		fmt.Println("Only Yes or No accepted, please retry!")
+		fmt.Println()
+	}
 }
