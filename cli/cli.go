@@ -33,6 +33,11 @@ func Quit(message string, args ...interface{}) {
 	os.Exit(1)
 }
 
+func End(message string, args ...interface{}) {
+	fmt.Printf(message+"\n", args...)
+	os.Exit(0)
+}
+
 func DecodeHex(in string) ([]byte, error) {
 	out := strings.TrimPrefix(strings.ToLower(in), "0x")
 	if len(out)%2 != 0 {
