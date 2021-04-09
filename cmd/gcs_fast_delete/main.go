@@ -81,6 +81,9 @@ func main() {
 	}
 
 	start := time.Now()
+	fmt.Println()
+	fmt.Println("Starting deletion ....")
+
 	jobs := make(chan job, 1000)
 	var wg sync.WaitGroup
 
@@ -99,8 +102,8 @@ func main() {
 
 	fmt.Println("Waiting for jobs to complete ....")
 	wg.Wait()
-	fmt.Printf("Deleted %d files in %s", fileCount, time.Since(start))
 
+	fmt.Printf("Deleted %d files in %s\n", fileCount, time.Since(start))
 }
 
 type job struct {
