@@ -3,11 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dfuse-io/tooling/cli"
 )
+
+var maybeDurationRegex = regexp.MustCompile("^[-0-9\\.( |h|m|s|ms|µs|ns)]+$")
 
 var asNanoseconds = flag.Bool("ns", false, "Decode the value as having nanosecond unit")
 var asMicroseconds = flag.Bool("us", false, "Decode the value as having microsecond unit")
@@ -50,12 +54,39 @@ func toDuration(element string, unit time.Duration) string {
 
 	if cli.DecRegexp.MatchString(element) {
 		value, _ := strconv.ParseInt(element, 10, 64)
-		duration := time.Duration(value) * unit
 
-		return durationToString(duration)
+		return durationToString(time.Duration(value) * unit)
+	}
+
+	if maybeDurationRegex.MatchString(element) {
+		parsed, err := time.ParseDuration(strings.ReplaceAll(element, " ", ""))
+		if err == nil {
+			return durationToUnit(parsed, unit)
+		}
+
+		// There is an error, unable to parse element as a time.Duration, ignore it
 	}
 
 	return element
+}
+
+func durationToUnit(d time.Duration, unit time.Duration) string {
+	switch unit {
+	case time.Nanosecond:
+		return strconv.FormatInt(d.Nanoseconds(), 10)
+	case time.Microsecond:
+		return strconv.FormatInt(d.Microseconds(), 10)
+	case time.Millisecond:
+		return strconv.FormatInt(d.Milliseconds(), 10)
+	case time.Second:
+		return strconv.FormatFloat(d.Seconds(), 'f', -1, 64)
+	case time.Minute:
+		return strconv.FormatFloat(d.Seconds(), 'f', -1, 64)
+	case time.Hour:
+		return strconv.FormatFloat(d.Seconds(), 'f', -1, 64)
+	default:
+		panic(fmt.Errorf("invalid unit %s, should have matched one of the pre-defined unit", unit))
+	}
 }
 
 // durationToString is a copy of time.Duration.String() to add spaces between components
