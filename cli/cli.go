@@ -9,7 +9,9 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 )
 
 var DecRegexp = regexp.MustCompile("^[0-9]+$")
@@ -149,4 +151,113 @@ func AskForConfirmation(message string, args ...interface{}) bool {
 		fmt.Println("Only Yes or No accepted, please retry!")
 		fmt.Println()
 	}
+}
+
+//go:generate go-enum -f=$GOFILE --marshal --names
+
+//
+// ENUM(
+//   None
+//   UnixSeconds
+//   UnixMilliseconds
+// )
+//
+type DateLikeHint uint
+
+//
+// ENUM(
+//   Layout
+//   Timestamp
+// )
+//
+type DateParsedFrom uint
+
+var _, localOffset = time.Now().Zone()
+
+func ParseDateLikeInput(element string, hint DateLikeHint) (out time.Time, parsedFrom DateParsedFrom, ok bool) {
+	if element == "" {
+		return out, 0, false
+	}
+
+	if element == "now" {
+		return time.Now(), DateParsedFromLayout, true
+	}
+
+	if DecRegexp.MatchString(element) {
+		value, _ := strconv.ParseUint(element, 10, 64)
+
+		if hint == DateLikeHintUnixMilliseconds {
+			return fromUnixMilliseconds(value), DateParsedFromTimestamp, true
+		}
+
+		if hint == DateLikeHintUnixSeconds {
+			return fromUnixSeconds(value), DateParsedFromTimestamp, true
+		}
+
+		// If the value is lower than this Unix seconds timestamp representing 3000-01-01, we assume it's a Unix seconds value
+		if value <= 32503683661 {
+			return fromUnixSeconds(value), DateParsedFromTimestamp, true
+		}
+
+		// In all other cases, we assume it's a Unix milliseconds
+		return fromUnixMilliseconds(value), DateParsedFromTimestamp, true
+	}
+
+	// Try all layouts we support
+	return fromLayouts(element)
+}
+
+func fromLayouts(element string) (out time.Time, parsedFrom DateParsedFrom, ok bool) {
+	for _, layout := range layouts {
+		parsed, err := time.Parse(layout, element)
+		if err == nil {
+			return parsed, DateParsedFromLayout, true
+		}
+	}
+
+	for _, layout := range localLayouts {
+		parsed, err := time.Parse(layout, element)
+		if err == nil {
+			return adjustBackToLocal(parsed), DateParsedFromLayout, true
+		}
+	}
+
+	return
+}
+
+func fromUnixSeconds(value uint64) time.Time {
+	return time.Unix(int64(value), 0).UTC()
+}
+
+func fromUnixMilliseconds(value uint64) time.Time {
+	ns := (int64(value) % 1000) * int64(time.Millisecond)
+
+	return time.Unix(int64(value)/1000, ns).UTC()
+}
+
+func adjustBackToLocal(in time.Time) time.Time {
+	return in.Add(-1 * time.Duration(int64(localOffset)) * time.Second)
+}
+
+var layouts = []string{
+	// Sorted from most probably to less probably
+	time.RFC3339,
+	time.RFC3339Nano,
+	time.UnixDate,
+	time.RFC850,
+	time.RubyDate,
+	time.RFC1123,
+	time.RFC1123Z,
+	time.RFC822,
+	time.RFC822Z,
+	time.ANSIC,
+	time.Stamp,
+	time.StampMilli,
+	time.StampMicro,
+	time.StampNano,
+}
+
+var localLayouts = []string{
+	// Seen on some websites
+	"Jan-02-2006 15:04:05 PM",
 }
