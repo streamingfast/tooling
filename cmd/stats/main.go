@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math"
 	"sort"
@@ -9,8 +10,12 @@ import (
 	"github.com/dfuse-io/tooling/cli"
 )
 
+var unit = flag.String("u", "", "An optional unit value, appended verbatim to each element of the final report if present")
+
 func main() {
-	count := uint64(0)
+	flag.Parse()
+
+	elementCount := uint64(0)
 	sum := 0.0
 	var min, max *float64
 	var distribution []float64
@@ -20,7 +25,7 @@ func main() {
 		value := parse(element)
 		distribution = append(distribution, value)
 
-		count++
+		elementCount++
 		sum += value
 		if min == nil || *min > value {
 			min = &value
@@ -31,19 +36,19 @@ func main() {
 		}
 	}
 
-	if count == 0 {
+	if elementCount == 0 {
 		fmt.Println("Statistics unavailable, no data")
 		return
 	}
 
 	sort.Float64Slice(distribution).Sort()
 
-	fmt.Printf("Count: %d\n", count)
+	fmt.Printf("Count: %d\n", count(elementCount))
 	fmt.Printf("Range: Min %s - Max %s\n", float(*min), float(*max))
 	fmt.Printf("Sum: %s\n", float(sum))
-	fmt.Printf("Average: %s\n", float(sum/float64(count)))
+	fmt.Printf("Average: %s\n", float(sum/float64(elementCount)))
 	fmt.Printf("Median: %s\n", float(median(distribution)))
-	fmt.Printf("Standard Deviation: %s\n", float(standardDeviation(sum/float64(count), distribution)))
+	fmt.Printf("Standard Deviation: %s\n", float(standardDeviation(sum/float64(elementCount), distribution)))
 }
 
 func parse(element string) float64 {
@@ -77,8 +82,24 @@ func standardDeviation(mean float64, distribution []float64) float64 {
 	return math.Sqrt(sumSquaredDiffToMean / float64(len(distribution)-1))
 }
 
+type count uint64
+
+func (c count) String() string {
+	value := strconv.FormatUint(uint64(c), 64)
+	if *unit == "" {
+		return value
+	}
+
+	return value + *unit
+}
+
 type float float64
 
 func (f float) String() string {
-	return fmt.Sprintf("%.5g", float64(f))
+	value := strconv.FormatFloat(float64(f), 'f', 5, 64)
+	if *unit == "" {
+		return value
+	}
+
+	return value + *unit
 }
