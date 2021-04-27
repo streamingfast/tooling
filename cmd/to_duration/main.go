@@ -75,15 +75,21 @@ func durationToUnit(d time.Duration, unit time.Duration) string {
 	case time.Nanosecond:
 		return strconv.FormatInt(d.Nanoseconds(), 10)
 	case time.Microsecond:
-		return strconv.FormatInt(d.Microseconds(), 10)
+		usec := d / time.Microsecond
+		nusec := d % time.Microsecond
+
+		return strconv.FormatFloat(float64(usec)+float64(nusec)/1e3, 'f', -1, 64)
 	case time.Millisecond:
-		return strconv.FormatInt(d.Milliseconds(), 10)
+		msec := d / time.Millisecond
+		nmsec := d % time.Millisecond
+
+		return strconv.FormatFloat(float64(msec)+float64(nmsec)/1e6, 'f', -1, 64)
 	case time.Second:
 		return strconv.FormatFloat(d.Seconds(), 'f', -1, 64)
 	case time.Minute:
-		return strconv.FormatFloat(d.Seconds(), 'f', -1, 64)
+		return strconv.FormatFloat(d.Minutes(), 'f', -1, 64)
 	case time.Hour:
-		return strconv.FormatFloat(d.Seconds(), 'f', -1, 64)
+		return strconv.FormatFloat(d.Hours(), 'f', -1, 64)
 	default:
 		panic(fmt.Errorf("invalid unit %s, should have matched one of the pre-defined unit", unit))
 	}
