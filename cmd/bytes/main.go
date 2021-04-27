@@ -1,72 +1,94 @@
 package main
 
 import (
-	"encoding/base64"
-	"encoding/hex"
+	"flag"
 	"fmt"
 	"strconv"
 
 	"github.com/dfuse-io/tooling/cli"
 )
 
+var asBinary = flag.Bool("b", false, "Use IEC base 2 representation for bytes, i.e. KB = 1024, MB = 1024^2, etc.")
+var asInternational = flag.Bool("si", false, "Use International System of Units (SI) base 10 representation for bytes, i.e. KB = 1000, MB = 1000^2, etc.")
+
 func main() {
+	flag.Parse()
+
 	scanner := cli.NewArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(humanize(element))
 	}
 }
 
-const (
-	Bytes     int64 = 1
-	KiloBytes       = 1000 * Bytes
-	MegaBytes       = 1000 * KiloBytes
-	GigaBytes       = 1000 * MegaBytes
-	TeraBytes       = 1000 * GigaBytes
-)
-
-const (
-	KibiBytes = 1024 * Bytes
-	MebiBytes = 1024 * KiloBytes
-	GibiBytes = 1024 * MegaBytes
-	TebiBytes = 1024 * GigaBytes
-)
-
 func humanize(element string) string {
+
 	if cli.DecRegexp.MatchString(element) {
 		value, err := strconv.ParseInt(element, 10, 64)
 		cli.NoError(err, "invalid dec value %q", element)
 
-		if value > TeraBytes {
-			return format(value, TeraBytes, TebiBytes, "TB")
-		}
-
-		if value > GigaBytes {
-			return format(value, GigaBytes, GibiBytes, "GB")
-		}
-
-		if value > MegaBytes {
-			return format(value, MegaBytes, MebiBytes, "MB")
-		}
-
-		if value > KiloBytes {
-			return format(value, KiloBytes, KibiBytes, "KB")
-		}
-
-		return format(value, Bytes, Bytes, "bytes")
+		return humanizeBytes(value)
 	}
 
 	if cli.HexRegexp.MatchString(element) {
-		bytes, err := hex.DecodeString(element)
+		value, err := strconv.ParseInt(element, 16, 64)
 		cli.NoError(err, "invalid hex value %q", element)
 
-		return base64.StdEncoding.EncodeToString(bytes)
+		return humanizeBytes(value)
 	}
 
-	return base64.StdEncoding.EncodeToString([]byte(element))
+	return element
 }
 
-func format(value int64, decimalConversion int64, binaryConversion int64, unit string) string {
-	converted := float64(value) / float64(decimalConversion)
+func humanizeBytes(value int64) string {
+	metricSystem := base10MetricSystem
+	if *asBinary {
+		metricSystem = base2MetricSystem
+	}
 
-	return fmt.Sprintf("%.2f %s", converted, unit)
+	for _, entry := range metricSystem {
+		if value >= entry.InBytes {
+			return format(value, entry)
+		}
+	}
+
+	return format(value, metricSystem[len(metricSystem)-1])
 }
+
+func format(value int64, entry metricSystemEntry) string {
+	converted := float64(value) / float64(entry.InBytes)
+
+	return fmt.Sprintf("%.2f %s", converted, entry.Unit)
+}
+
+var base10MetricSystem = []metricSystemEntry{
+	{Unit: "TB", InBytes: 1000 * 1000 * 1000 * 1000},
+	{Unit: "GB", InBytes: 1000 * 1000 * 1000},
+	{Unit: "MB", InBytes: 1000 * 1000},
+	{Unit: "KB", InBytes: 1000},
+	{Unit: "bytes", InBytes: 1},
+}
+
+var base2MetricSystem = []metricSystemEntry{
+	{Unit: "TiB", InBytes: 1024 * 1024 * 1024 * 1024},
+	{Unit: "GiB", InBytes: 1024 * 1024 * 1024},
+	{Unit: "MiB", InBytes: 1024 * 1024},
+	{Unit: "KiB", InBytes: 1024},
+	{Unit: "bytes", InBytes: 1},
+}
+
+type metricSystemEntry struct {
+	Unit    string
+	InBytes int64
+}
+
+//go:generate go-enum -f=$GOFILE --marshal --names
+
+//
+// ENUM(
+//   Byte
+//   KiloByte
+//   MegaByte
+//   GigaByte
+//   TeraByte
+// )
+type Size uint
