@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+
+new_name=
+skip_git_check=
+skip_tests=
+skip_go_mod_update=
+working_directory=
+
+main() {
+  while getopts "hfmn:sw:" opt; do
+    case $opt in
+      h) usage && exit 0;;
+      n) new_name="$OPTARG";;
+      f) skip_git_check=true;;
+      m) skip_go_mod_update=true;;
+      s) skip_tests=true;;
+      w) working_directory="$OPTARG";;
+      \?) usage_error "Invalid option: -$OPTARG";;
+    esac
+  done
+  shift $((OPTIND-1))
+
+  if [[ $1 == "" ]]; then
+    usage_error "At least one parameter <name> is required"
+  fi
+
+  if [[ "$new_name" != "" && $# -gt 1 ]]; then
+    echo "Flag -n <new_name> can be used only when providing a single <name> argument"
+    exit 1
+  fi
+
+  if [[ "$working_directory" != "" ]]; then
+    set -e
+    echo "Moving to '$working_directory'"
+    pushd "$working_directory" > /dev/null
+    set +e
+  fi
+
+  if [[ ! -d .git ]]; then
+    echo "Not in a Git repository"
+    exit 1
+  fi
+
+  if [[ ! -f go.mod ]]; then
+    echo "No go.mod file found, are you in the correct folder?"
+    exit 1
+  fi
+
+  if [[ $skip_git_check == "" ]]; then
+    if [ ! -z "$(git status --porcelain)" ]; then
+      echo "Uncommitted changes or untracked files, clean up first"
+      exit 1
+    fi
+  fi
+
+  set -e
+
+  git pull
+
+  for name in $@; do
+    ack -l "github.com/dfuse-io/$name" | xargs sed -i "" "s|github.com/dfuse-io/$name|github.com/streamingfast/`get_new_name $name`|g"
+
+    if [[ $skip_go_mod_update == "" ]]; then
+      sed -i "" "/github.com\/streamingfast\/`get_new_name $name`/d" go.mod
+    fi
+  done
+
+  set +e
+  if [[ $skip_tests == "" ]]; then
+    go test ./...
+  else
+    echo "Building Go code"
+    go build ./...
+  fi
+  success=$?
+  set -e
+
+  if [[ $success == 0 ]]; then
+    git add -A
+
+    if [[ $# -eq 1 ]]; then
+      git commit -m "Updating 'github.com/dfuse-io/$1' to 'github.com/streamingfast/`get_new_name $1`'"
+    else
+      git commit -m "Updating 'github.com/dfuse-io/{`joined_names $@`}' to 'github.com/streamingfast/{`joined_names $@`}'"
+    fi
+
+    git push
+  fi
+}
+
+joined_names() {
+  echo $@ | tr ' ' ','
+}
+
+get_new_name() {
+  if [[ $new_name == "" ]]; then
+    printf $1
+  else
+    printf "$new_name"
+  fi
+}
+
+usage_error() {
+  message="$1"
+  exit_code="$2"
+
+  echo "ERROR: $message"
+  echo ""
+  usage
+  exit ${exit_code:-1}
+}
+
+usage() {
+  echo "usage: sfreplace <name> [<name> ...]"
+  echo ""
+  echo "Dirty script to replace dependency of the form 'github.com/dfuse-io/\$name' to"
+  echo "'github.com/streamingfast/\$new_name' in the current directory."
+  echo ""
+  echo "Options"
+  echo "    -n <new_name>   Use <new_name> as the new name for the dependency, doesn't work with muplite <name> argument"
+  echo "    -w <dir>        Changes working directory to <dir> prior running any command"
+  echo "    -s              Skips 'go test ./...' and replaces it instea with a leaner 'go build ./...'"
+  echo "    -f              Forces even for unclean state in Git, use with **Caution**!"
+  echo "    -m              Skips updating 'go.mod' file and let the actual caller do a 'go get ...' to bump to the correct version"
+  echo "    -h              Display help about this script"
+}
+
+main "$@"
