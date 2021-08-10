@@ -5,14 +5,16 @@ skip_git_check=
 skip_tests=
 skip_go_mod_update=
 working_directory=
+force_go_get=
 
 main() {
-  while getopts "hfmn:sw:" opt; do
+  while getopts "hfmng:sw:" opt; do
     case $opt in
       h) usage && exit 0;;
       n) new_name="$OPTARG";;
       f) skip_git_check=true;;
       m) skip_go_mod_update=true;;
+      g) force_go_get=true;;
       s) skip_tests=true;;
       w) working_directory="$OPTARG";;
       \?) usage_error "Invalid option: -$OPTARG";;
@@ -63,7 +65,19 @@ main() {
     if [[ $skip_go_mod_update == "" ]]; then
       sed -i "" "/github.com\/streamingfast\/`get_new_name $name`/d" go.mod
     fi
+
+  if [[ $force_go_get == "" ]]; then
+      go get "github.com/streamingfast/`get_new_name $name`"
+  fi
+
   done
+
+
+
+
+  if [[ $force_go_get == "" ]]; then
+      go get "github.com/streamingfast/`get_new_name $name`"
+  fi
 
   set +e
   if [[ $skip_tests == "" ]]; then
@@ -120,6 +134,7 @@ usage() {
   echo "    -n <new_name>   Use <new_name> as the new name for the dependency, doesn't work with muplite <name> argument"
   echo "    -w <dir>        Changes working directory to <dir> prior running any command"
   echo "    -s              Skips 'go test ./...' and replaces it instea with a leaner 'go build ./...'"
+  echo "    -g              Forget go get"
   echo "    -f              Forces even for unclean state in Git, use with **Caution**!"
   echo "    -m              Skips updating 'go.mod' file and let the actual caller do a 'go get ...' to bump to the correct version"
   echo "    -h              Display help about this script"
