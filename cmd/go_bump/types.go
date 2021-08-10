@@ -15,6 +15,7 @@ type PackageID string
 
 type UnresolvedPackageID string
 
+var projectDepRegex = regexp.MustCompile(`^[^/@]+/[^/]+$`)
 var versionSuffixRegex = regexp.MustCompile(`!$`)
 
 func (u UnresolvedPackageID) Resolve(config *Config) (PackageID, error) {
@@ -34,36 +35,79 @@ func (u UnresolvedPackageID) Resolve(config *Config) (PackageID, error) {
 		}
 
 		in = replaceInPackageIDPrefix("~", config.DefaultProjectShortcut, in)
+	case isPlainDependency(in):
+		// Seems to be a plain dependency of the form "test"
+		if config.DefaultProjectShortcut == "" {
+			return "", fmt.Errorf("unable to resolve package ID %q: no configuration defined for a plain dependency, must specify a 'default_project_shortcut' config value", in)
+		}
+
+		in = prependToPackageID(config.DefaultProjectShortcut, in)
+
+	case isProjectDependency(in):
+		// Seems to be a project dependency of the form "<org>/test"
+		if config.DefaultRepoShortcut == "" {
+			return "", fmt.Errorf("unable to resolve package ID %q: no configuration defined for a plain dependency, must specify a 'default_repo_shortcut' config value", in)
+		}
+
+		in = prependToPackageID(config.DefaultRepoShortcut, in)
+
 	}
 
 	if versionSuffixRegex.MatchString(in) {
 		in = versionSuffixRegex.ReplaceAllString(in, config.DefaultBranchShortcut)
 	}
 
+	if !strings.Contains(in, "@") {
+		in = in + config.DefaultBranchShortcut
+	}
+
 	return PackageID(in), nil
 }
 
-func replaceInPackageIDPrefix(symbol, replacement, rest string) string {
-	suffix := strings.Replace(rest, symbol, "", 1)
-	hasTrailingSlash := strings.HasSuffix(replacement, "/")
-	hasLeadingSlash := strings.HasPrefix(suffix, "/")
+func isProjectDependency(dep string) bool {
+	if !strings.Contains(dep, ".") && projectDepRegex.MatchString(dep) {
+		return true
+	}
+
+	return false
+}
+
+func isPlainDependency(dep string) bool {
+	if strings.Contains(dep, ".") {
+		return false
+	}
+
+	if !strings.Contains(dep, ".") && !strings.Contains(dep, "/") {
+		return true
+	}
+
+	return false
+}
+
+func replaceInPackageIDPrefix(symbol, replacement, in string) string {
+	return prependToPackageID(replacement, strings.Replace(in, symbol, "", 1))
+}
+
+func prependToPackageID(prefix, in string) string {
+	hasTrailingSlash := strings.HasSuffix(prefix, "/")
+	hasLeadingSlash := strings.HasPrefix(in, "/")
 
 	if !hasTrailingSlash && !hasLeadingSlash {
-		return replacement + "/" + suffix
+		return prefix + "/" + in
 	}
 
 	if (hasTrailingSlash && !hasLeadingSlash) || (!hasTrailingSlash && hasLeadingSlash) {
-		return replacement + suffix
+		return prefix + in
 	}
 
-	return replacement + strings.Replace(suffix, "/", "", 1)
+	return prefix + strings.Replace(in, "/", "", 1)
 }
 
 type Config struct {
-	// DefaultRepoShortcut defines value of leading @ in package id
+	// DefaultRepoShortcut defines value of leading @ in package id, usually github.com
 	DefaultRepoShortcut string `yaml:"default_repo_shortcut"`
 
-	// DefaultRepoShortcut defines value of leading ~ in package id
+	// DefaultProjectShortcut defines value of leading ~ in package id, usually github.com/<org>
 	DefaultProjectShortcut string `yaml:"default_project_shortcut"`
 
 	// DefaultBranchShortcut defines value of trailing ! in package id

@@ -9,6 +9,7 @@ import (
 
 func TestUnresolvedPackageID_Resolve(t *testing.T) {
 	defaultConfig := newDefaultConfig()
+	defaultConfig.DefaultBranchShortcut = "@custom"
 	defaultConfig.DefaultProjectShortcut = "github.com/dfuse-io"
 
 	tests := []struct {
@@ -21,9 +22,17 @@ func TestUnresolvedPackageID_Resolve(t *testing.T) {
 		{"no replacement", "github.com/dfuse-io/test@develop", defaultConfig, "github.com/dfuse-io/test@develop", nil},
 		{"repo replacement", "@dfuse-io/test@develop", defaultConfig, "github.com/dfuse-io/test@develop", nil},
 		{"project replacement", "~test@develop", defaultConfig, "github.com/dfuse-io/test@develop", nil},
-		{"branch replacement", "github.com/dfuse-io/test!", defaultConfig, "github.com/dfuse-io/test@develop", nil},
-		{"branch replacement & repo", "@dfuse-io/test!", defaultConfig, "github.com/dfuse-io/test@develop", nil},
-		{"branch replacement & project", "~test!", defaultConfig, "github.com/dfuse-io/test@develop", nil},
+		{"branch replacement", "github.com/dfuse-io/test!", defaultConfig, "github.com/dfuse-io/test@custom", nil},
+		{"branch replacement & repo", "@dfuse-io/test!", defaultConfig, "github.com/dfuse-io/test@custom", nil},
+		{"branch replacement & project", "~test!", defaultConfig, "github.com/dfuse-io/test@custom", nil},
+		{"plain dep", "test", defaultConfig, "github.com/dfuse-io/test@custom", nil},
+		{"plain dep with manual branch", "test@develop", defaultConfig, "github.com/dfuse-io/test@develop", nil},
+		// FIXME: This should work somehow, might be hard to make the interpretation right ....
+		// {"plain dep with manual  namespaced branch", "project@namespace/develop", defaultConfig, "github.com/project/test@namespace/develop", nil},
+		{"project + name dep", "project/test", defaultConfig, "github.com/project/test@custom", nil},
+		{"project + name dep with manual branch", "project/test@develop", defaultConfig, "github.com/project/test@develop", nil},
+		// FIXME: This should work somehow, might be hard to make the interpretation right ....
+		// {"project + name dep with manual namespaced branch", "project/test@namespace/develop", defaultConfig, "github.com/project/test@namespace/develop", nil},
 	}
 
 	for _, test := range tests {
@@ -31,9 +40,9 @@ func TestUnresolvedPackageID_Resolve(t *testing.T) {
 			actual, err := UnresolvedPackageID(test.in).Resolve(test.config)
 			if test.expectedErr == nil {
 				require.NoError(t, err)
-				assert.Equal(t, PackageID(test.expected), actual)
+				assert.Equal(t, PackageID(test.expected), actual, "Wrong input %q", test.in)
 			} else {
-				assert.Equal(t, test.expectedErr, err)
+				assert.Equal(t, test.expectedErr, err, "Wrong input %q", test.in)
 			}
 		})
 	}
