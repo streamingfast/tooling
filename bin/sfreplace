@@ -8,13 +8,13 @@ working_directory=
 force_go_get=
 
 main() {
-  while getopts "hfmng:sw:" opt; do
+  while getopts "hfg:mn:sw:" opt; do
     case $opt in
       h) usage && exit 0;;
       n) new_name="$OPTARG";;
       f) skip_git_check=true;;
       m) skip_go_mod_update=true;;
-      g) force_go_get=true;;
+      g) force_go_get="$OPTARG";;
       s) skip_tests=true;;
       w) working_directory="$OPTARG";;
       \?) usage_error "Invalid option: -$OPTARG";;
@@ -28,6 +28,11 @@ main() {
 
   if [[ "$new_name" != "" && $# -gt 1 ]]; then
     echo "Flag -n <new_name> can be used only when providing a single <name> argument"
+    exit 1
+  fi
+
+  if [[ "$force_go_get" != "" && $# -gt 1 ]]; then
+    echo "Flag -g <dep_name> can be used only when providing a single <name> argument"
     exit 1
   fi
 
@@ -66,18 +71,13 @@ main() {
       sed -i "" "/github.com\/streamingfast\/`get_new_name $name`/d" go.mod
     fi
 
-  if [[ $force_go_get == "" ]]; then
-      go get "github.com/streamingfast/`get_new_name $name`"
-  fi
+    dep="$name"
+    if [[ $force_go_get != "" ]]; then
+      dep="$force_go_get"
+    fi
 
+    go_bump "$dep"
   done
-
-
-
-
-  if [[ $force_go_get == "" ]]; then
-      go get "github.com/streamingfast/`get_new_name $name`"
-  fi
 
   set +e
   if [[ $skip_tests == "" ]]; then
