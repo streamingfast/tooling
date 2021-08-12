@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
-	"github.com/dfuse-io/logging"
 	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
 	"google.golang.org/api/googleapi"
 )
@@ -29,8 +29,9 @@ var zlog = zap.NewNop()
 func main() {
 	cli.SetupFlag(usage)
 
+
 	if *flagVerbose {
-		zlog = logging.NewSimpleLogger("gcs_upload", "github.com/dfuse-io/tooling/cmd/gcs_upload")
+		logging.ApplicationLogger("gcs_upload", "github.com/dfuse-io/tooling/cmd/gcs_upload", &zlog)
 	}
 
 	args := flag.Args()

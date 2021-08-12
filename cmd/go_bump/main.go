@@ -7,8 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/dfuse-io/logging"
 	"github.com/spf13/cobra"
+	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
 )
 
@@ -21,7 +21,10 @@ var rootCmd = &cobra.Command{
 	SilenceUsage: true,
 }
 
-var zlog = logging.NewSimpleLogger("go_dump", "github.com/dfuse-io/tooling/cmd/go_bump")
+var zlog *zap.Logger
+func init() {
+	logging.ApplicationLogger("go_dump", "github.com/dfuse-io/tooling/cmd/go_bump", &zlog)
+}
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {

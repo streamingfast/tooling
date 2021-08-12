@@ -1,6 +1,8 @@
-### dfuse Tooling
+# StreamingFast Tooling
+[![reference](https://img.shields.io/badge/godoc-reference-5272B4.svg?style=flat-square)](https://pkg.go.dev/github.com/streamingfast/tooling)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A bunch of command line tools that is used by multiple developers within dfuse.
+A bunch of command line tools that is used by multiple developers within StreamingFast.
 
 #### Design Principles
 
@@ -105,7 +107,24 @@ ABDG
 
 #### Caveats
 
-The standard input is fully consumed then split into lines and then processedd. So in
+The standard input is fully consumed then split into lines and then processed. So in
 its current form, this project does not support streaming from big load of data.
 
 PRs welcome!
+
+## Contributing
+
+**Issues and PR in this repo related strictly to the tooling library.**
+
+Report any protocol-specific issues in their
+[respective repositories](https://github.com/streamingfast/streamingfast#protocols)
+
+**Please first refer to the general
+[StreamingFast contribution guide](https://github.com/streamingfast/streamingfast/blob/master/CONTRIBUTING.md)**,
+if you wish to contribute to this code base.
+
+This codebase uses unit tests extensively, please write and run tests.
+
+## License
+
+[Apache 2.0](LICENSE)
