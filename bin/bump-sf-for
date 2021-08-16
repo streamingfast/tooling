@@ -2,14 +2,16 @@
 
 ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-DFUSE_FOR=
-DFUSE_FOR_PRIV=
+SF_FOR=
+SF_FOR_PRIV=
 
 build=""
 dry_run=""
 force_build=""
 checkout_corresponding_branch=""
 current_dir="`pwd`"
+
+building=""
 
 teardown() {
   for job in `jobs -p`; do
@@ -44,40 +46,53 @@ main() {
     shift
   fi
 
-  DFUSE_FOR="$DFUSE_REPOSITORY_DIR/dfuse-$chain"
-  DFUSE_FOR_PRIV="$DFUSE_REPOSITORY_DIR/dfuse-$chain-priv"
+  SF_FOR="$SF_REPOSITORY_DIR/sf-$chain"
+  if [[ ! -d "$SF_FOR" ]]; then
+    usage_error "Directory '$SF_FOR' does not exist, have you correctly specified \$SF_REPOSITORY_DIR environment variable?"
+  fi
 
-  dfuse_for_branch=`repository_branch $DFUSE_FOR`
-  dfuse_for_priv_branch=`repository_branch $DFUSE_FOR_PRIV`
+  SF_FOR_PRIV="$SF_REPOSITORY_DIR/sf-$chain-priv"
+  if [[ ! -d "$SF_FOR" ]]; then
+    usage_error "Directory '$SF_FOR_PRIV' does not exist, have you correctly specified \$SF_REPOSITORY_DIR environment variable?"
+  fi
+
+  if [[ ! -d "$SF_WORKFLOWS_DIR" ]]; then
+    usage_error "Directory '$SF_WORKFLOWS_DIR' does not exist, have you correctly specified \$SF_WORKFLOWS_DIR environment variable?"
+  fi
+
+  sf_for_branch=`repository_branch $SF_FOR`
+  sf_for_priv_branch=`repository_branch $SF_FOR_PRIV`
 
   if [[ "$component" != "" ]]; then
-    bump_dep $DFUSE_FOR $component $dfuse_for_branch
+    bump_dep $SF_FOR $component $sf_for_branch
     if [[ ($? == 0 && $build == "true") || $force_build == "true" ]]; then
-      build_component "dfuse-$chain" "$dfuse_for_branch"
+      build_component "sf-$chain" "$sf_for_branch"
     fi
   elif [[ $force_build == "true" ]]; then
-    build_component "dfuse-$chain" "$dfuse_for_branch"
+    build_component "sf-$chain" "$sf_for_branch"
   fi
 
   if [[ "$checkout_corresponding_branch" == "true" &&
-        "$dfuse_for_branch" != "develop" &&
-        "$dfuse_for_branch" != "master" &&
-        "$dfuse_for_branch" != "$dfuse_for_priv_branch"
+        "$sf_for_branch" != "develop" &&
+        "$sf_for_branch" != "master" &&
+        "$sf_for_branch" != "$sf_for_priv_branch"
      ]]; then
-    checkout_branch "$DFUSE_FOR_PRIV" "$dfuse_for_branch"
-    dfuse_for_priv_branch="$dfuse_for_branch"
+    checkout_branch "$SF_FOR_PRIV" "$sf_for_branch"
+    sf_for_priv_branch="$sf_for_branch"
   fi
 
-  bump_dep $DFUSE_FOR_PRIV "dfuse-$chain@$dfuse_for_branch" "$dfuse_for_priv_branch"
+  bump_dep $SF_FOR_PRIV "sf-$chain@$sf_for_branch" "$sf_for_priv_branch"
   if [[ ($? == 0 && $build == "true") || $force_build == "true" ]]; then
-    build_component "dfuse-$chain-priv" "$dfuse_for_priv_branch"
+    build_component "sf-$chain-priv" "$sf_for_priv_branch"
   fi
 
-  echo ""
-  echo "Press Ctrl+C to terminate all builds"
-  for job in `jobs -p`; do
-    wait $job || true
-  done
+  if [[ "$building" != "" ]]; then
+    echo ""
+    echo "Press Ctrl+C to terminate all builds"
+    for job in `jobs -p`; do
+      wait $job || true
+    done
+  fi
 }
 
 # bump_dep <repository> <component> <branch>
@@ -86,9 +101,9 @@ bump_dep() {
   component="$2"
   branch="$3"
 
-  # If component does not contain 'github.com', we assume it's a dfuse component to bump
+  # If component does not contain 'github.com', we assume it's a sf component to bump
   if [[ ! "$component" =~ ^github.com ]]; then
-    component="github.com/dfuse-io/$component"
+    component="github.com/streamingfast/$component"
   fi
 
   if [[ "$component" =~ !$ ]]; then
@@ -126,13 +141,14 @@ build_component() {
   branch="$2"
 
   set -e
-  cd "$DFUSE_WORKFLOWS_DIR"
+  cd "$SF_WORKFLOWS_DIR"
   jsonnet_file="$name.jsonnet"
   if [[ ! -f $jsonnet_file ]]; then
-    echo "Unable to find file '$jsonnet_file' in folder workflows dir ($DFUSE_WORKFLOWS_DIR), skipping"
+    echo "Unable to find file '$jsonnet_file' in folder workflows dir ($SF_WORKFLOWS_DIR), skipping"
     return 0
   fi
 
+  building="true"
   echo "Submitting $name.jsonnet (with branch='$branch')"
   run_job ./submit $name.jsonnet -p "branch=$branch"
 
@@ -208,10 +224,10 @@ usage_error() {
 }
 
 usage() {
-  echo "usage: bump-dfuse-for [-n] [-b] [-f] <eosio|ethereum|solana> [<component>]"
+  echo "usage: bump-sf-for [-n] [-b] [-f] <eosio|ethereum|solana> [<component>]"
   echo ""
-  echo "Bump and potentially build the dfuse-<chain> and dfuse-<chain>-priv automatically when bumping."
-  echo "If the <component> parameter is empty, only dfuse-<chain>-priv is bumped."
+  echo "Bump and potentially build the sf-<chain> and sf-<chain>-priv automatically when bumping."
+  echo "If the <component> parameter is empty, only sf-<chain>-priv is bumped."
   echo ""
   echo "Components are not built unless the '-b' flag is used"
   echo ""
