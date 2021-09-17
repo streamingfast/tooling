@@ -1,26 +1,57 @@
 package main
 
 import (
+	"bufio"
 	"encoding/base64"
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"io"
 	"math/big"
+	"os"
 
-	"github.com/streamingfast/tooling/cli"
 	"github.com/eoscanada/eos-go/btcsuite/btcutil/base58"
+	"github.com/streamingfast/tooling/cli"
 )
 
 var asStringFlag = flag.Bool("s", false, "Decode the string and not it's representation")
 var asBase58Flag = flag.Bool("b58", false, "Decode the input as a base58 representation")
+var asBinaryFlag = flag.Bool("in", false, "Decode the standard input as a bytes stream")
 
 func main() {
 	flag.Parse()
+
+	if *asBinaryFlag {
+		fromBinary()
+		return
+	}
 
 	scanner := cli.NewArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toHex(element))
 	}
+}
+
+func fromBinary() {
+	fi, err := os.Stdin.Stat()
+	cli.NoError(err, "unable to stat stdin")
+	cli.Ensure((fi.Mode()&os.ModeCharDevice) == 0, "Standard input must be piped when from stdin when using -bin")
+
+	reader := bufio.NewReader(os.Stdin)
+
+	buf := make([]byte, 16)
+	for {
+		n, err := reader.Read(buf)
+		if err == io.EOF {
+			cli.Ensure(n == 0, "Byte count should be 0 when getting EOF")
+			break
+		}
+
+		cli.NoError(err, "unable to read 16 bytes stdin")
+		fmt.Print(hex.EncodeToString(buf[0:n]))
+	}
+
+	fmt.Println()
 }
 
 func toHex(element string) string {

@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
-	"github.com/streamingfast/tooling/cli"
 	"github.com/streamingfast/logging"
+	"github.com/streamingfast/tooling/cli"
 	"go.uber.org/zap"
 	"google.golang.org/api/googleapi"
 )
@@ -28,7 +28,6 @@ var zlog = zap.NewNop()
 
 func main() {
 	cli.SetupFlag(usage)
-
 
 	if *flagVerbose {
 		logging.ApplicationLogger("gcs_upload", "github.com/streamingfast/tooling/cmd/gcs_upload", &zlog)

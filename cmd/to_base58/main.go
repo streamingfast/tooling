@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/streamingfast/tooling/cli"
 	"github.com/mr-tron/base58"
+	"github.com/streamingfast/tooling/cli"
 )
 
 func main() {

@@ -22,6 +22,7 @@ var rootCmd = &cobra.Command{
 }
 
 var zlog *zap.Logger
+
 func init() {
 	logging.ApplicationLogger("go_dump", "github.com/streamingfast/tooling/cmd/go_bump", &zlog)
 }
