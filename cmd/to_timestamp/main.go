@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/tooling/cli"
 )
 
 var asUnixSeconds = flag.Bool("s", false, "Format timestamp as Unix seconds")

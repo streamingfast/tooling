@@ -65,7 +65,7 @@ main() {
   git pull
 
   for name in $@; do
-    ack -l "github.com/dfuse-io/$name" | xargs sed -i "" "s|github.com/dfuse-io/$name|github.com/streamingfast/`get_new_name $name`|g"
+    ack -l "github.com/streamingfast/$name" | xargs sed -i "" "s|github.com/streamingfast/$name|github.com/streamingfast/`get_new_name $name`|g"
 
     if [[ $skip_go_mod_update == "" ]]; then
       sed -i "" "/github.com\/streamingfast\/`get_new_name $name`/d" go.mod
@@ -93,9 +93,9 @@ main() {
     git add -A
 
     if [[ $# -eq 1 ]]; then
-      git commit -m "Updating 'github.com/dfuse-io/$1' to 'github.com/streamingfast/`get_new_name $1`'"
+      git commit -m "Updating 'github.com/streamingfast/$1' to 'github.com/streamingfast/`get_new_name $1`'"
     else
-      git commit -m "Updating 'github.com/dfuse-io/{`joined_names $@`}' to 'github.com/streamingfast/{`joined_names $@`}'"
+      git commit -m "Updating 'github.com/streamingfast/{`joined_names $@`}' to 'github.com/streamingfast/{`joined_names $@`}'"
     fi
 
     git push
@@ -127,7 +127,7 @@ usage_error() {
 usage() {
   echo "usage: sfreplace <name> [<name> ...]"
   echo ""
-  echo "Dirty script to replace dependency of the form 'github.com/dfuse-io/\$name' to"
+  echo "Dirty script to replace dependency of the form 'github.com/streamingfast/\$name' to"
   echo "'github.com/streamingfast/\$new_name' in the current directory."
   echo ""
   echo "Options"

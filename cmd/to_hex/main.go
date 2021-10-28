@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/tooling/cli"
 	"github.com/eoscanada/eos-go/btcsuite/btcutil/base58"
 )
 

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/tooling/cli"
 )
 
 var humanizeFlag = flag.Bool("h", false, "Humanize the output number")

@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/tooling/cli"
 	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
@@ -32,7 +32,7 @@ func main() {
 	cli.SetupFlag(usage)
 
 	if *flagVerbose {
-		logging.ApplicationLogger("gcs_fast_delete", "github.com/dfuse-io/tooling/cmd/gcs_fast_delete", &zlog)
+		logging.ApplicationLogger("gcs_fast_delete", "github.com/streamingfast/tooling/cmd/gcs_fast_delete", &zlog)
 	}
 
 	args := flag.Args()

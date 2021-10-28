@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/tooling/cli"
 )
 
 var maybeDurationRegex = regexp.MustCompile("^[-0-9\\.( |h|m|s|ms|µs|ns)]+$")

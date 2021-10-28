@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/tooling/cli"
 )
 
 var unit = flag.String("u", "", "An optional unit value, appended verbatim to each element of the final report if present")

@@ -19,14 +19,14 @@ func TestUnresolvedPackageID_Resolve(t *testing.T) {
 		expected    string
 		expectedErr error
 	}{
-		{"no replacement", "github.com/dfuse-io/test@develop", defaultConfig, "github.com/dfuse-io/test@develop", nil},
-		{"repo replacement", "@dfuse-io/test@develop", defaultConfig, "github.com/dfuse-io/test@develop", nil},
-		{"project replacement", "~test@develop", defaultConfig, "github.com/dfuse-io/test@develop", nil},
-		{"branch replacement", "github.com/dfuse-io/test!", defaultConfig, "github.com/dfuse-io/test@custom", nil},
-		{"branch replacement & repo", "@dfuse-io/test!", defaultConfig, "github.com/dfuse-io/test@custom", nil},
-		{"branch replacement & project", "~test!", defaultConfig, "github.com/dfuse-io/test@custom", nil},
-		{"plain dep", "test", defaultConfig, "github.com/dfuse-io/test@custom", nil},
-		{"plain dep with manual branch", "test@develop", defaultConfig, "github.com/dfuse-io/test@develop", nil},
+		{"no replacement", "github.com/streamingfast/test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
+		{"repo replacement", "@dfuse-io/test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
+		{"project replacement", "~test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
+		{"branch replacement", "github.com/streamingfast/test!", defaultConfig, "github.com/streamingfast/test@custom", nil},
+		{"branch replacement & repo", "@dfuse-io/test!", defaultConfig, "github.com/streamingfast/test@custom", nil},
+		{"branch replacement & project", "~test!", defaultConfig, "github.com/streamingfast/test@custom", nil},
+		{"plain dep", "test", defaultConfig, "github.com/streamingfast/test@custom", nil},
+		{"plain dep with manual branch", "test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
 		// FIXME: This should work somehow, might be hard to make the interpretation right ....
 		// {"plain dep with manual  namespaced branch", "project@namespace/develop", defaultConfig, "github.com/project/test@namespace/develop", nil},
 		{"project + name dep", "project/test", defaultConfig, "github.com/project/test@custom", nil},

@@ -23,7 +23,7 @@ var rootCmd = &cobra.Command{
 
 var zlog *zap.Logger
 func init() {
-	logging.ApplicationLogger("go_dump", "github.com/dfuse-io/tooling/cmd/go_bump", &zlog)
+	logging.ApplicationLogger("go_dump", "github.com/streamingfast/tooling/cmd/go_bump", &zlog)
 }
 
 func main() {
@@ -81,9 +81,9 @@ commit the changes and create a commit with a standardize message.
 The <id> format by defaults use the standard 'go get' format, however, we
 provide some shortcuts:
 
-  GitHub Shortcut               @dfuse-io/bstream@develop (equivalent to github.com/dfuse-io/bstream@develop)
-  Default Project Shortcut      ~bstream@develop (equivalent to github.com/dfuse-io/bstream@develop)
-  Default Branch Shortcut       ~bstream! (equivalent to github.com/dfuse-io/bstream@develop)
+  GitHub Shortcut               @dfuse-io/bstream@develop (equivalent to github.com/streamingfast/bstream@develop)
+  Default Project Shortcut      ~bstream@develop (equivalent to github.com/streamingfast/bstream@develop)
+  Default Branch Shortcut       ~bstream! (equivalent to github.com/streamingfast/bstream@develop)
 
 You can configure the default values used for ~ and ! via config file '$HOME/config/go_bump/default.yaml'
 that if exists, can override the values

@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
-	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/tooling/cli"
 	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
 	"google.golang.org/api/googleapi"
@@ -31,7 +31,7 @@ func main() {
 
 
 	if *flagVerbose {
-		logging.ApplicationLogger("gcs_upload", "github.com/dfuse-io/tooling/cmd/gcs_upload", &zlog)
+		logging.ApplicationLogger("gcs_upload", "github.com/streamingfast/tooling/cmd/gcs_upload", &zlog)
 	}
 
 	args := flag.Args()

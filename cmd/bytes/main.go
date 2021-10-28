@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/dfuse-io/tooling/cli"
+	"github.com/streamingfast/tooling/cli"
 )
 
 var asBinary = flag.Bool("b", false, "Use IEC base 2 representation for bytes, i.e. KB = 1024, MB = 1024^2, etc.")
