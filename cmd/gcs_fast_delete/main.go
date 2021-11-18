@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/streamingfast/tooling/cli"
 	"github.com/streamingfast/logging"
+	"github.com/streamingfast/tooling/cli"
 	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
 )
@@ -87,7 +87,7 @@ func main() {
 	jobs := make(chan job, 1000)
 	var wg sync.WaitGroup
 
-	for w := 1; w <= 500; w++ {
+	for w := 1; w <= 250; w++ {
 		wg.Add(1)
 		go worker(ctx, w, &wg, jobs)
 	}
@@ -96,6 +96,9 @@ func main() {
 	err = listFiles(ctx, objectPrefix, func(f string) {
 		fileCount++
 		jobs <- job{file: f}
+		if fileCount%1000 == 0 {
+			zlog.Info("progress", zap.Int("processed", fileCount))
+		}
 	}, Unlimited)
 	close(jobs)
 	cli.NoError(err, "Unable to list files")
@@ -115,7 +118,11 @@ func worker(ctx context.Context, id int, wg *sync.WaitGroup, jobs <-chan job) {
 	for j := range jobs {
 		err := deleteFile(ctx, j.file)
 		if err != nil {
-			panic(err)
+			zlog.Info("retrying file", zap.String("file", j.file))
+			err = deleteFile(ctx, j.file)
+			if err != nil {
+				zlog.Info("skipping failed file", zap.String("file", j.file))
+			}
 		}
 	}
 }
@@ -152,7 +159,7 @@ func listFiles(ctx context.Context, prefix string, f func(file string), limit in
 }
 
 func deleteFile(ctx context.Context, object string) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
 	o := bucket.Object(object)
