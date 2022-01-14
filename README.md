@@ -108,6 +108,54 @@ to_upper ABdg
 ABDG
 ```
 
+##### `go_replace`
+
+The `go_replace` command can be used to quickly replace go dependencies of your organization
+by automatically filling the repository + organization part (`github.com/organization/`) and
+resolves to a location on your disk.
+
+With a config file located at `$HOME/.config/go_replace/default.yaml` with the follwing content:
+
+```
+default_work_dir: $HOME/work
+default_repo_shortcut: github.com
+default_project_shortcut: github.com/streamingfast
+```
+
+One could do
+
+```
+go_replace merger
+```
+
+In a project's root and would get a replacement statement in it's `go.mod` file that would
+look like
+
+```
+go_replace github.com/streamingfast/merger => /home/john/work/merger
+```
+
+It can also be easily dropped with
+
+```
+go_replace -d merger
+```
+
+Finally, it comes with a Git hook support to ensure you do not commit
+local replacement.
+
+Install the hooks to all Git repository found from working directory:
+
+```
+go_replace hook install
+```
+
+> Runs in dry-run by default, use `-f` to actually write the hooks
+
+This installs a `pre-push` hook that will prevent the push from happing
+if commits touched any `go.mod` file and it appears that the working
+directory contains some local replacement.
+
 #### Caveats
 
 The standard input is fully consumed then split into lines and then processed. So in
