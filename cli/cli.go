@@ -14,9 +14,14 @@ import (
 	"time"
 )
 
-var DecRegexp = regexp.MustCompile("^[0-9]+$")
-var HexRegexp = regexp.MustCompile("^(0(x|X))?[a-fA-F0-9]+$")
-var SpacesRegexp = regexp.MustCompile("\\s")
+const encodeStd = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+const encodeURL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+var Base64URLRegexp = regexp.MustCompile(`^[a-zA-z0-9\-_]+(=){0,2}$`)
+var Base64StdRegexp = regexp.MustCompile(`^[a-zA-z0-9\+\/]+(=){0,2}$`)
+var DecRegexp = regexp.MustCompile(`^[0-9]+$`)
+var HexRegexp = regexp.MustCompile(`^(0(x|X))?[a-fA-F0-9]+$`)
+var SpacesRegexp = regexp.MustCompile(`\s`)
 
 func Ensure(condition bool, message string, args ...interface{}) {
 	if !condition {
