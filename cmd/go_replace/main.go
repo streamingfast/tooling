@@ -121,6 +121,10 @@ func edit(ctx context.Context, replacement Replacement, drop bool) {
 	zlog.Debug("completed replacement", zap.Bool("drop", drop), zap.String("from", replacement.From), zap.String("to", replacement.From))
 }
 
+func printlnInfo(message string, args ...interface{}) {
+	fmt.Fprintf(os.Stdout, message+"\n", args...)
+}
+
 func printlnError(message string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, message+"\n", args...)
 }

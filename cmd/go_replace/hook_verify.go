@@ -159,6 +159,12 @@ func fetchCommitsModifyingGoMod(ctx context.Context, commitRange string) []strin
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		if strings.HasPrefix(string(output), "fatal: Invalid revision range "+commitRange) {
+			zlog.Debug("Seems like remote commit is not known locally, likely due to not being up-to-date with remote, letting it continue")
+			os.Exit(0)
+		}
+
+		printlnError("Command %s failed", cmd.String())
 		os.Stderr.Write(output)
 		os.Exit(1)
 	}
