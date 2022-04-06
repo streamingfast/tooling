@@ -92,6 +92,9 @@ to_hex 123456                                # <-- As decimal
 to_hex -b64 q/4BAg==                         # <-- As base64
 abfe0102
 
+to_hex -b58 25JnwSn7                         # <-- As base58
+02284274561c
+
 to_hex -s ascii                              # <-- As string
 6173636969
 
