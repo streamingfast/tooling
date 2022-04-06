@@ -89,7 +89,7 @@ to_duration <unit>                           # <-- Available units: -ns (Nanosec
 to_hex 123456                                # <-- As decimal
 01e240
 
-to_hex q/4BAg==                              # <-- As base64
+to_hex -b64 q/4BAg==                         # <-- As base64
 abfe0102
 
 to_hex -s ascii                              # <-- As string
