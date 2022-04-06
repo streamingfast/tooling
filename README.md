@@ -89,8 +89,11 @@ to_duration <unit>                           # <-- Available units: -ns (Nanosec
 to_hex 123456                                # <-- As decimal
 01e240
 
-to_hex q/4BAg==                              # <-- As base64
+to_hex -b64 q/4BAg==                         # <-- As base64
 abfe0102
+
+to_hex -b58 25JnwSn7                         # <-- As base58
+02284274561c
 
 to_hex -s ascii                              # <-- As string
 6173636969
@@ -99,7 +102,7 @@ to_hex '"ascii"'                             # <-- As string
 6173636969
 
 cat /dev/random | head -c 16 | to_hex -in    # <-- Random 16 bytes transformed to_hex
-abfe0102
+bb85976f46bc1a576e141aa73268cc9a
 
 to_lower ABdg
 abdg
