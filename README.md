@@ -102,7 +102,7 @@ to_hex '"ascii"'                             # <-- As string
 6173636969
 
 cat /dev/random | head -c 16 | to_hex -in    # <-- Random 16 bytes transformed to_hex
-abfe0102
+bb85976f46bc1a576e141aa73268cc9a
 
 to_lower ABdg
 abdg
