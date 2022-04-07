@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"regexp"
 	"strconv"
@@ -43,6 +44,15 @@ func Quit(message string, args ...interface{}) {
 func End(message string, args ...interface{}) {
 	fmt.Printf(message+"\n", args...)
 	os.Exit(0)
+}
+
+func EncodeHex(in []byte) string {
+	hex := hex.EncodeToString(in)
+	if len(hex)%2 == 1 {
+		hex = "0" + hex
+	}
+
+	return hex
 }
 
 func DecodeHex(in string) ([]byte, error) {
@@ -113,6 +123,29 @@ func (s *stringSliceArgumentScanner) ScanArgument() (string, bool) {
 	return value, true
 }
 
+// ProcessStandardInputBytes reads standard input using a buffer as big as `bufferSize`
+// and pass the read bytes to `processor` function. The number of bytes received by the
+// `processor` function might be lower than buffer size but will never be bigger than it.
+func ProcessStandardInputBytes(bufferSize int, processor func(bytes []byte)) {
+	fi, err := os.Stdin.Stat()
+	NoError(err, "unable to stat stdin")
+	Ensure((fi.Mode()&os.ModeCharDevice) == 0, "Standard input must be piped when from stdin mode is used")
+
+	reader := bufio.NewReader(os.Stdin)
+
+	buf := make([]byte, bufferSize)
+	for {
+		n, err := reader.Read(buf)
+		if err == io.EOF {
+			Ensure(n == 0, "Byte count should be 0 when getting EOF")
+			break
+		}
+
+		NoError(err, "unable to read %d bytes stdin", bufferSize)
+		processor(buf[0:n])
+	}
+}
+
 func ErrorUsage(usage func() string, message string, args ...interface{}) string {
 	return fmt.Sprintf(message+"\n\n"+usage(), args...)
 }
@@ -160,6 +193,14 @@ func AskForConfirmation(message string, args ...interface{}) bool {
 		fmt.Println("Only Yes or No accepted, please retry!")
 		fmt.Println()
 	}
+}
+
+func ReadIntegerToBytes(in string) []byte {
+	value := new(big.Int)
+	value, success := value.SetString(in, 10)
+	Ensure(success, "number %q is invalid", in)
+
+	return value.Bytes()
 }
 
 //go:generate go-enum -f=$GOFILE --marshal --names

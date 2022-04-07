@@ -1,13 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"encoding/base64"
 	"encoding/hex"
 	"flag"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"unicode"
 
@@ -23,7 +20,11 @@ func main() {
 	flag.Parse()
 
 	if *asBinaryFlag {
-		fromBinary()
+		cli.ProcessStandardInputBytes(16, func(bytes []byte) {
+			fmt.Print(bytesToAscii(bytes))
+		})
+		fmt.Println()
+
 		return
 	}
 
@@ -31,28 +32,6 @@ func main() {
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toAscii(element))
 	}
-}
-
-func fromBinary() {
-	fi, err := os.Stdin.Stat()
-	cli.NoError(err, "unable to stat stdin")
-	cli.Ensure((fi.Mode()&os.ModeCharDevice) == 0, "Standard input must be piped when from stdin when using -bin")
-
-	reader := bufio.NewReader(os.Stdin)
-
-	buf := make([]byte, 16)
-	for {
-		n, err := reader.Read(buf)
-		if err == io.EOF {
-			cli.Ensure(n == 0, "Byte count should be 0 when getting EOF")
-			break
-		}
-
-		cli.NoError(err, "unable to read 16 bytes stdin")
-		fmt.Print(hex.EncodeToString(buf[0:n]))
-	}
-
-	fmt.Println()
 }
 
 func toAscii(element string) string {
