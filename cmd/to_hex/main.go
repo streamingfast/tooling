@@ -63,7 +63,7 @@ func toHex(element string) string {
 		return base64valueToHex(element, base64.URLEncoding)
 	}
 
-	// If wrapped with `"`, we want the hex of the string characters so AB would give 6566
+	// If wrapped with `"`, we use the string characters has the bytes value
 	if element[0] == '"' && element[len(element)-1] == '"' {
 		return cli.EncodeHex([]byte(element)[1 : len(element)-1])
 	}

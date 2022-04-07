@@ -44,11 +44,11 @@ func toBase58(element string) string {
 	}
 
 	if *asIntegerFlag {
-		return cli.EncodeHex(cli.ReadIntegerToBytes(element))
+		return base58.Encode(cli.ReadIntegerToBytes(element))
 	}
 
 	if *asStringFlag {
-		return cli.EncodeHex([]byte(element))
+		return base58.Encode([]byte(element))
 	}
 
 	if *asBase64Flag {
@@ -59,9 +59,9 @@ func toBase58(element string) string {
 		return base64valueToBase58(element, base64.URLEncoding)
 	}
 
-	// If wrapped with `"`, we want the hex of the string characters so AB would give 6566
+	// If wrapped with `"`, we use the string characters has the bytes value
 	if element[0] == '"' && element[len(element)-1] == '"' {
-		return cli.EncodeHex([]byte(element)[1 : len(element)-1])
+		return base58.Encode([]byte(element)[1 : len(element)-1])
 	}
 
 	if cli.HexRegexp.MatchString(element) {
