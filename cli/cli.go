@@ -63,7 +63,11 @@ func NewArgumentScanner() ArgumentScanner {
 	NoError(err, "unable to stat stdin")
 
 	if (fi.Mode() & os.ModeCharDevice) == 0 {
-		return (*bufioArgumentScanner)(bufio.NewScanner(os.Stdin))
+		scanner := bufio.NewScanner(os.Stdin)
+		// Let's allow token as long as 50MiB
+		scanner.Buffer(nil, 50*1024*1024)
+
+		return (*bufioArgumentScanner)(scanner)
 	}
 
 	args := os.Args[1:]
