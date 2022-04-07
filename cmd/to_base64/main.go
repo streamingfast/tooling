@@ -13,8 +13,8 @@ var asHexFlag = flag.Bool("hex", false, "Decode the input as an hexadecimal repr
 var asBase58Flag = flag.Bool("b58", false, "Decode the input as a standard base58 representation")
 var asIntegerFlag = flag.Bool("i", false, "Decode the input as an integer representation")
 var asStringFlag = flag.Bool("s", false, "Decode the string and not it's representation")
-
 var fromStdIn = flag.Bool("in", false, "Decode the standard input as a bytes stream")
+var toUrlFlag = flag.Bool("url", false, "If true, used base64 URL encoder instead of the standard non-URL safe one")
 
 func main() {
 	flag.Parse()
@@ -78,5 +78,10 @@ func base58valueToBase64(in string) string {
 }
 
 func base64Encode(in []byte) string {
-	return base64.StdEncoding.EncodeToString(in)
+	encoder := base64.StdEncoding
+	if *toUrlFlag {
+		encoder = base64.URLEncoding
+	}
+
+	return encoder.EncodeToString(in)
 }

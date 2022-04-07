@@ -14,101 +14,251 @@ A bunch of command line tools that is used by multiple developers within Streami
 
 To install the Golang utilities, simply use `./scripts/install_all.sh`.
 
-To install the Bash & Ruby utilities (slowly converting them to Golang please), first
-install the required global dependencies:
-
-```
-gem install timeliness
-```
-
-Then add the `bin` folder's absolute path to your `PATH` environment variable:
-
-```
-export PATH=`pwd`/bin:$PATH
-```
-
 #### Usage
 
 Most (if not all) of the tools accept their arguments through standard input
 or from command line arguments directly. It's one or the other and standard input
 takes precedence if found to be coming from a script.
 
-```
-bytes 100000
-100.00 KB
+- [to_hex](#converts-input-to-hexadecimal-encoded-string) - Converts input to hexadecimal encoded string
+- [to_base58](#converts-input-to-base58-encoded-string) - Converts input to Base58 encoded string
+- [to_base64](#converts-input-to-base64-encoded-string) - Converts input to Base64 encoded string
+- [to_dec](#converts-input-to-integer-arbitrary-precision) - Converts input to integer (arbitrary precision)
+- [to_date](#converts-input-to-iso-8601-string-format) - Converts input to ISO-8601 string format
+- [bytes](#humanize-bytes-value) - Humanize bytes value
+- [to_duration](#converts-input-to-duration) - Converts input to duration
+- [to_lower](#transforms-input-to-lower-case) - Transforms input to lower case
+- [to_upper](#transforms-input-to-upper-case) - Transforms input to upper case
+- [stats](#computes-statistics-about-numbers-received) - Computes statistics about numbers received
+- [go_replace](#go_replace) - Golang module local replace helper
 
+##### Converts input to hexadecimal encoded string
+
+```
+# As base58
+to_hex -b58 5PzCau
+abfe0102
+
+# As base64
+to_hex -b64 q/4BAg==
+abfe0102
+
+# As base64 URL safe encoding
+to_hex -b64u q_4BAg==
+abfe0102
+
+# As integer
+to_hex -i 126700
+01eeec
+
+# As string
+to_hex -s myname
+6d796e616d65
+
+# Inferred as string if received value has double-quotes
+to_hex '"myname"'
+6d796e616d65
+
+# Arguments from standard input (each line is an element to convert)
+echo "q/4BAw==\nvv4BBA==\nDN4BBQ==" | to_hex -b64
+abfe0103
+befe0104
+0cde0105
+
+# Reads from standard input as bytes and convert to hexadecimal, random 16 bytes transformed to_hex here
+cat /dev/random | head -c 16 | to_hex -in
+bb85976f46bc1a576e141aa73268cc9a
+```
+
+##### Converts input to Base64 encoded string
+
+Converts to Base64 Standard Encoding, use `-url` flag to convert to URL safe encoder instead.
+
+```
+# Inferred as hex if all characters are in the hexadecimal characters set
+to_base64 abfe0102
+q/4BAg==
+
+# As hex
+to_base64 -hex abfe0102
+q/4BAg==
+
+# As base58
+to_base64 -b58 5PzCau
+q/4BAg==
+
+# As integer
+to_base64 -i 126700
+Ae7s
+
+# As string
+to_base64 -s myname
+bXluYW1l
+
+# Inferred as string if received value has double-quotes
+to_base64 '"myname"'
+bXluYW1l
+
+# Arguments from standard input (each line is an element to convert)
+echo "abfe0103\nbefe0104\ncde0105" | to_base64
+q/4BAw==
+vv4BBA==
+DN4BBQ==
+
+# Reads from standard input as bytes and convert to hexadecimal, random 16 bytes transformed to_hex here
+cat /dev/random | head -c 16 | to_base64 -in
+ebWxHXskW2fMMOL2QQUY8w==
+```
+
+##### Converts input to Base58 encoded string
+
+```
+# Infer hex is all characters
+to_base58 abfe0102
+5PzCau
+
+# As hex
+to_base58 -hex abfe0102
+5PzCau
+
+# As base64
+to_base58 -b64 q/4BAg==
+5PzCau
+
+# As base64 URL safe encoding
+to_base58 -b64u q_4BAg==
+5PzCau
+
+# As integer
+to_base58 -i 126700
+efV
+
+# As string
+to_base58 -s myname
+wWsYQQr8
+
+# Inferred as string if received value has double-quotes
+to_base58 '"myname"'
+wWsYQQr8
+
+# Arguments from standard input (each line is an element to convert)
+echo "abfe0103\nbefe0104\ncde0105" | to_base58
+5PzCav
+5t9xwV
+L5RNL
+
+# Reads from standard input as bytes and convert to hexadecimal, random 16 bytes transformed to_hex here
+cat /dev/random | head -c 16 | to_base58 -in
+5nXfEKk1UVQH2c9XXwde3g
+```
+
+##### Converts input to ISO-8601 string format
+
+```
+# Parse as Unix milliseconds (milliseconds inferred)
+to_date 1600446733000
+2020-09-18T12:32:13-04:00 (2020-09-18T16:32:13Z)
+
+# Parse as Unix seconds (seconds inferred)
+to_date 1600446733
+2020-09-18T12:32:13-04:00 (2020-09-18T16:32:13Z)
+
+# Parse as Golang date layout (multiple layouts tried one after the other)
+to_date 2020-09-18T16:32:13Z
+2020-09-18T12:32:13-04:00 (2020-09-18T16:32:13Z)
+```
+
+##### Converts input to integer (arbitrary precision)
+
+```
+to_dec 01e240
+123456
+
+# Arbitrary precision
+to_dec 21e19e0c9bab2400000
+10000000000000000000000
+```
+
+##### Humanize bytes value
+
+```
+# As SI standard (base quantity is 1000) so KB, MB, etc.
 bytes 100000000
 100.00 MB
 
-bytes -b 100000000                           # <-- As IEC standard (base 2) so KiB, MiB, etc.
+# As IEC standard (base quantity is 1024) so KiB, MiB, etc.
+bytes -b 100000000
 95.37 MiB
+```
 
-stats 1 2 3 4 5 6 7 8 9                      # <-- Computes statistics about numbers received
+##### Converts input to duration
+
+If the input received only contains decimal values, it's assumed to be a time unit value, time
+unit is defined by one of the available flag and it we prints the humanize value of
+this time duration.
+
+Otherwise, assume it's a human duration string (loose format, multiple variants accepted)
+and turn into the time unit as declared by the defined by one of the available time unit flags.
+
+Availble flags are:
+
+- `-ns` => Nanoseconds
+- `-us` => Microseconds
+- `-ms` => Milliseconds
+- `-s` => Seconds
+- `-m` => Minutes
+- `-h` => Hours
+
+```
+# Humanized duration to time unit
+to_duration -m "41h 40m 0s"
+2500
+
+# Humanized duration to time unit
+to_duration -ms "45m"
+2700000
+
+# Humanized duration to time unit
+to_duration -ns "10m"
+600000000000
+
+# Time unit to humanized duration
+$ to_duration -h 150000
+150000h 0m 0s
+
+# Time unit to humanized duration
+to_duration -s 170000000
+47222h 13m 20s
+
+# Time unit to humanized duration
+to_duration -us 1500000000
+1.5s
+```
+
+##### Transforms input to lower case
+
+```
+to_lower ABdg
+abdg
+```
+
+##### Transforms input to upper case
+
+```
+to_upper ABdg
+ABDG
+```
+
+##### Computes statistics about numbers received
+
+```
+stats 1 2 3 4 5 6 7 8 9
 Count: 9
 Range: Min 1.00000 - Max 9.00000
 Sum: 45.00000
 Average: 5.00000
 Median: 5.00000
 Standard Deviation: 2.73861
-
-to_base58 abfe0102                           # <-- As hexadecimal
-5PzCau
-
-to_base58 myname                             # <-- As string
-wWsYQQr8
-
-to_base64 abfe0102                           # <-- As hexadecimal
-q/4BAg==
-
-to_base64 myname                             # <-- As string
-bXluYW1l
-
-to_date 1600446733000                        # <-- Parse as unix milliseconds (milliseconds inferred)
-2020-09-18T12:32:13-04:00 (2020-09-18T16:32:13Z)
-
-to_date 1600446733                           # <-- Parse as unix seconds (seconds inferred)
-2020-09-18T12:32:13-04:00 (2020-09-18T16:32:13Z)
-
-to_date 2020-09-18T16:32:13Z                 # <-- Parse as Golang date layout (multiple layouts tried one after the other)
-2020-09-18T12:32:13-04:00 (2020-09-18T16:32:13Z)
-
-to_dec 01e240
-123456
-
-to_dec 21e19e0c9bab2400000                   # <-- Arbitrary precision
-10000000000000000000000
-
-to_duration -ms 24h                          # <-- Parse as Golang duration, returned as selected unit (here milliseconds)
-ABDG
-
-to_duration -h 124                           # <-- Parse as selected unit (here hours) and returned as Golang humanized duration
-124h 0m 0s
-
-to_duration <unit>                           # <-- Available units: -ns (Nanoseconds), -us (Microseconds), -ms (Milliseconds), -s (Seconds), -m (Minutes) and -h (Hours)
-
-to_hex 123456                                # <-- As decimal
-01e240
-
-to_hex -b64 q/4BAg==                         # <-- As base64
-abfe0102
-
-to_hex -b58 25JnwSn7                         # <-- As base58
-02284274561c
-
-to_hex -s ascii                              # <-- As string
-6173636969
-
-to_hex '"ascii"'                             # <-- As string
-6173636969
-
-cat /dev/random | head -c 16 | to_hex -in    # <-- Random 16 bytes transformed to_hex
-bb85976f46bc1a576e141aa73268cc9a
-
-to_lower ABdg
-abdg
-
-to_upper ABdg
-ABDG
 ```
 
 ##### `go_replace`
