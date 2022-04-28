@@ -10,7 +10,7 @@ import (
 func TestUnresolvedPackageID_Resolve(t *testing.T) {
 	defaultConfig := newDefaultConfig()
 	defaultConfig.DefaultBranchShortcut = "@custom"
-	defaultConfig.DefaultProjectShortcut = "github.com/dfuse-io"
+	defaultConfig.DefaultProjectShortcut = "github.com/streamingfast"
 
 	tests := []struct {
 		name        string
@@ -20,17 +20,20 @@ func TestUnresolvedPackageID_Resolve(t *testing.T) {
 		expectedErr error
 	}{
 		{"no replacement", "github.com/streamingfast/test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
-		{"repo replacement", "@dfuse-io/test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
+		{"repo replacement", "@streamingfast/test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
 		{"project replacement", "~test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
 		{"branch replacement", "github.com/streamingfast/test!", defaultConfig, "github.com/streamingfast/test@custom", nil},
-		{"branch replacement & repo", "@dfuse-io/test!", defaultConfig, "github.com/streamingfast/test@custom", nil},
+		{"branch replacement & repo", "@streamingfast/test!", defaultConfig, "github.com/streamingfast/test@custom", nil},
 		{"branch replacement & project", "~test!", defaultConfig, "github.com/streamingfast/test@custom", nil},
 		{"plain dep", "test", defaultConfig, "github.com/streamingfast/test@custom", nil},
 		{"plain dep with manual branch", "test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
 		// FIXME: This should work somehow, might be hard to make the interpretation right ....
 		// {"plain dep with manual  namespaced branch", "project@namespace/develop", defaultConfig, "github.com/project/test@namespace/develop", nil},
-		{"project + name dep", "project/test", defaultConfig, "github.com/project/test@custom", nil},
-		{"project + name dep with manual branch", "project/test@develop", defaultConfig, "github.com/project/test@develop", nil},
+		{"monorepo project + name dep", "project/test", defaultConfig, "github.com/streamingfast/project/test@custom", nil},
+		{"monorepo project + name dep with manual branch", "project/test@develop", defaultConfig, "github.com/streamingfast/project/test@develop", nil},
+
+		{"project + name dep", "@project/test", defaultConfig, "github.com/project/test@custom", nil},
+		{"project + name dep with manual branch", "@project/test@develop", defaultConfig, "github.com/project/test@develop", nil},
 		// FIXME: This should work somehow, might be hard to make the interpretation right ....
 		// {"project + name dep with manual namespaced branch", "project/test@namespace/develop", defaultConfig, "github.com/project/test@namespace/develop", nil},
 	}

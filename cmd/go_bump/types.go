@@ -45,11 +45,11 @@ func (u UnresolvedPackageID) Resolve(config *Config) (PackageID, error) {
 
 	case isProjectDependency(in):
 		// Seems to be a project dependency of the form "<org>/test"
-		if config.DefaultRepoShortcut == "" {
-			return "", fmt.Errorf("unable to resolve package ID %q: no configuration defined for a plain dependency, must specify a 'default_repo_shortcut' config value", in)
+		if config.DefaultProjectShortcut == "" {
+			return "", fmt.Errorf("unable to resolve package ID %q: no configuration defined for a plain dependency, must specify a 'default_project_shortcut' config value", in)
 		}
 
-		in = prependToPackageID(config.DefaultRepoShortcut, in)
+		in = prependToPackageID(config.DefaultProjectShortcut, in)
 
 	}
 
