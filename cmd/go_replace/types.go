@@ -73,7 +73,18 @@ func (u UnresolvedReplacement) Resolve(config *Config) (out Replacement, err err
 }
 
 func looksLikeRelativePath(dep string) bool {
-	return strings.Contains(dep, ".") || strings.Contains(dep, string(os.PathSeparator))
+	// If it contains ./ or ../, we assume it's a relative path
+	if strings.Contains(dep, "."+string(os.PathSeparator)) || strings.Contains(dep, ".."+string(os.PathSeparator)) {
+		return true
+	}
+
+	// It it contains just a path separator, we check that according to current directory ".",
+	// it's indeed actually an existing folder, we assume it's a relative path if the directory exists.
+	if strings.Contains(dep, string(os.PathSeparator)) {
+		return cli.DirectoryExists(filepath.Join(".", dep))
+	}
+
+	return false
 }
 
 func resolveWorkingDirPath(workingDir string, from string) (string, error) {
