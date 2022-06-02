@@ -10,8 +10,8 @@ import (
 )
 
 var asBase58Flag = flag.Bool("b58", false, "Decode the input as a base58 representation")
-var asBase64Flag = flag.Bool("b64", false, "Decode the input as a standard base64 representation")
 var asBase64URLFlag = flag.Bool("b64u", false, "Decode the input as URL base64 representation")
+var asBase64Flag = flag.Bool("b64", false, "Decode the input as a standard base64 representation")
 var asIntegerFlag = flag.Bool("i", false, "Decode the input as an integer representation")
 var asStringFlag = flag.Bool("s", false, "Decode the string and not it's representation")
 
@@ -60,7 +60,7 @@ func toHex(element string) string {
 	}
 
 	if *asBase64URLFlag {
-		return base64valueToHex(element, base64.URLEncoding)
+		return base64valueToHex(element, base64.RawURLEncoding)
 	}
 
 	// If wrapped with `"`, we use the string characters has the bytes value

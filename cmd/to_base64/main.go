@@ -80,7 +80,7 @@ func base58valueToBase64(in string) string {
 func base64Encode(in []byte) string {
 	encoder := base64.StdEncoding
 	if *toUrlFlag {
-		encoder = base64.URLEncoding
+		encoder = base64.RawURLEncoding
 	}
 
 	return encoder.EncodeToString(in)

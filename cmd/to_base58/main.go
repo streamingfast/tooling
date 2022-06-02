@@ -56,7 +56,7 @@ func toBase58(element string) string {
 	}
 
 	if *asBase64URLFlag {
-		return base64valueToBase58(element, base64.URLEncoding)
+		return base64valueToBase58(element, base64.RawURLEncoding)
 	}
 
 	// If wrapped with `"`, we use the string characters has the bytes value
