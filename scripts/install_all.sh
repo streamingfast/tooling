@@ -17,6 +17,7 @@ main() {
 
   echo "Installing all command line utilities found in './cmd'"
   for folder in `ls ./cmd`; do
+    echo "- $folder"
     go install "./cmd/$folder"
   done
 }
