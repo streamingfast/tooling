@@ -20,7 +20,7 @@ func main() {
 	var min, max *float64
 	var distribution []float64
 
-	scanner := cli.NewArgumentScanner()
+	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		value := parse(element)
 		distribution = append(distribution, value)

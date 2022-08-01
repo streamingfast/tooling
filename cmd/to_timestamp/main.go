@@ -16,7 +16,7 @@ var asUnixNanos = flag.Bool("ns", false, "Format timestamp as Unix nanoseconds")
 func main() {
 	flag.Parse()
 
-	scanner := cli.NewArgumentScanner()
+	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toTimestamp(element))
 	}

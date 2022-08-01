@@ -14,7 +14,7 @@ var asUnixMillis = flag.Bool("ms", false, "Avoid heuristics based to determine d
 func main() {
 	flag.Parse()
 
-	scanner := cli.NewArgumentScanner()
+	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toDate(element))
 	}

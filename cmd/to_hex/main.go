@@ -17,8 +17,16 @@ var asStringFlag = flag.Bool("s", false, "Decode the string and not it's represe
 
 var fromStdIn = flag.Bool("in", false, "Decode the standard input as a bytes stream")
 
+var reversedFourFlag = flag.Bool("r4", false, "Encode back hexadecimal using reverted 4 bytes number, works only when using '-i' flag")
+var reversedEightFlag = flag.Bool("r", false, "Encode back hexadecimal using reverted 8 bytes number, works only when using '-i' flag")
+
 func main() {
 	flag.Parse()
+
+	if *reversedFourFlag || *reversedEightFlag {
+		cli.Ensure(*asIntegerFlag, "Flag -r4 or -r8 can only be used when input is a integer so -i must be provided")
+		// cli.Ensure(!*reversedFourFlag && !*reversedEightFlag, "Only one of -r4 or -r8 can only be used at a time")
+	}
 
 	if *fromStdIn {
 		cli.Ensure(
@@ -32,7 +40,7 @@ func main() {
 		return
 	}
 
-	scanner := cli.NewArgumentScanner()
+	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toHex(element))
 	}
@@ -44,7 +52,16 @@ func toHex(element string) string {
 	}
 
 	if *asIntegerFlag {
-		return cli.EncodeHex(cli.ReadIntegerToBytes(element))
+		var bytes []byte
+		if *reversedFourFlag {
+			bytes = cli.ReadReversedIntegerToBytes(element, 4)
+		} else if *reversedEightFlag {
+			bytes = cli.ReadReversedIntegerToBytes(element, 8)
+		} else {
+			bytes = cli.ReadIntegerToBytes(element)
+		}
+
+		return cli.EncodeHex(bytes)
 	}
 
 	if *asStringFlag {

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	scanner := cli.NewArgumentScanner()
+	scanner := cli.NewOsArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(strings.ToLower(element))
 	}

@@ -68,7 +68,19 @@ type ArgumentScanner interface {
 	ScanArgument() (value string, ok bool)
 }
 
-func NewArgumentScanner() ArgumentScanner {
+func NewOsArgumentScanner() ArgumentScanner {
+	return NewArgumentScanner(os.Args[1:])
+}
+
+func NewFlagArgumentScanner() ArgumentScanner {
+	if flag.Parsed() {
+		return NewArgumentScanner(flag.Args())
+	}
+
+	return NewOsArgumentScanner()
+}
+
+func NewArgumentScanner(args []string) ArgumentScanner {
 	fi, err := os.Stdin.Stat()
 	NoError(err, "unable to stat stdin")
 
@@ -78,11 +90,6 @@ func NewArgumentScanner() ArgumentScanner {
 		scanner.Buffer(nil, 50*1024*1024)
 
 		return (*bufioArgumentScanner)(scanner)
-	}
-
-	args := os.Args[1:]
-	if flag.Parsed() {
-		args = flag.Args()
 	}
 
 	slice := stringSliceArgumentScanner(args)
@@ -201,6 +208,21 @@ func ReadIntegerToBytes(in string) []byte {
 	Ensure(success, "number %q is invalid", in)
 
 	return value.Bytes()
+}
+
+func ReadReversedIntegerToBytes(in string, count int) []byte {
+	bytes := ReadIntegerToBytes(in)
+
+	reversed := make([]byte, count)
+	for i := count - 1; i >= 0; i-- {
+		if len(bytes)-1 >= i {
+			reversed[count-1-i] = 0xFF ^ bytes[len(bytes)-1-i]
+		} else {
+			reversed[count-1-i] = 0xFF
+		}
+	}
+
+	return reversed
 }
 
 //go:generate go-enum -f=$GOFILE --marshal --names

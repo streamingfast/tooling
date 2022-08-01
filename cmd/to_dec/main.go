@@ -17,7 +17,7 @@ var reversedFlag = flag.Bool("r", false, "Decode assuming the input value is a r
 func main() {
 	flag.Parse()
 
-	scanner := cli.NewArgumentScanner()
+	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toDec(element))
 	}

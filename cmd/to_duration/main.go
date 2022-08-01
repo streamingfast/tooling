@@ -41,7 +41,7 @@ func main() {
 		cli.Quit("Exclusively one of the unit flag -ns (Nanosecond), -us (Microseond), -ms (Millisecond), -s (Second), -m (Minute) or -h (Hour) must be provided")
 	}
 
-	scanner := cli.NewArgumentScanner()
+	scanner := cli.NewOsArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toDuration(element, unit))
 	}

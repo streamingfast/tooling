@@ -14,7 +14,7 @@ var asInternational = flag.Bool("si", false, "Use International System of Units 
 func main() {
 	flag.Parse()
 
-	scanner := cli.NewArgumentScanner()
+	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(humanize(element))
 	}
