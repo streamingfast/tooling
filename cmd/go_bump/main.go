@@ -21,11 +21,7 @@ var rootCmd = &cobra.Command{
 	SilenceUsage: true,
 }
 
-var zlog *zap.Logger
-
-func init() {
-	logging.ApplicationLogger("go_dump", "github.com/streamingfast/tooling/cmd/go_bump", &zlog)
-}
+var zlog, _ = logging.ApplicationLogger("go_dump", "github.com/streamingfast/tooling/cmd/go_bump")
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {

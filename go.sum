@@ -437,6 +437,8 @@ github.com/streamingfast/cli v0.0.4-0.20220630165922-bc58c6666fc8 h1:1W2VZY4jRTh
 github.com/streamingfast/cli v0.0.4-0.20220630165922-bc58c6666fc8/go.mod h1:Lmirl0ABgXzidX33syiUG6lX64mJMK5pDNTBFuz8xZI=
 github.com/streamingfast/logging v0.0.0-20220511154537-ce373d264338 h1:Mn7i0pN8FASFpCDvtnRhV7L1bdlj1MteLkRWsxFVIhE=
 github.com/streamingfast/logging v0.0.0-20220511154537-ce373d264338/go.mod h1:VlduQ80JcGJSargkRU4Sg9Xo63wZD/l8A5NC/Uo1/uU=
+github.com/streamingfast/logging v0.0.0-20220813175024-b4fbb0e893df h1:P4pTLzwgd6bO3nnlIPnfQ/9Swnx3kSWxItgfkyDFoWo=
+github.com/streamingfast/logging v0.0.0-20220813175024-b4fbb0e893df/go.mod h1:VlduQ80JcGJSargkRU4Sg9Xo63wZD/l8A5NC/Uo1/uU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=

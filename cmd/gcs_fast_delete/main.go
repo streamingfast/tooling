@@ -26,14 +26,18 @@ var flagForce = flag.Bool("f", false, "Force running the command without asking 
 var bucket *storage.BucketHandle
 var bucketURL *url.URL
 var client *storage.Client
-var zlog = zap.NewNop()
+
+var zlog, _ = logging.RootLogger("gcs_fast_delete", "github.com/streamingfast/tooling/cmd/gcs_fast_delete")
 
 func main() {
 	cli.SetupFlag(usage)
 
+	defaultLevel := zap.PanicLevel
 	if *flagVerbose {
-		logging.ApplicationLogger("gcs_fast_delete", "github.com/streamingfast/tooling/cmd/gcs_fast_delete", &zlog)
+		defaultLevel = zap.DebugLevel
 	}
+
+	logging.InstantiateLoggers(logging.WithDefaultLevel(defaultLevel))
 
 	args := flag.Args()
 	cli.Ensure(len(args) == 1, cli.ErrorUsage(usage, "Expecting 1 argument, got %d", len(args)))

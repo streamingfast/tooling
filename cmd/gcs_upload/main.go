@@ -23,15 +23,17 @@ const Unlimited = math.MaxInt64
 var flagVerbose = flag.Bool("v", false, "Activate debugging log output")
 var flagOverwrite = flag.Bool("o", false, "Allow overwriting file on gs destination")
 
-//var bucket *storage.BucketHandle
-var zlog = zap.NewNop()
+var zlog, _ = logging.RootLogger("gcs_fast_delete", "github.com/streamingfast/tooling/cmd/gcs_upload")
 
 func main() {
 	cli.SetupFlag(usage)
 
+	defaultLevel := zap.PanicLevel
 	if *flagVerbose {
-		logging.ApplicationLogger("gcs_upload", "github.com/streamingfast/tooling/cmd/gcs_upload", &zlog)
+		defaultLevel = zap.DebugLevel
 	}
+
+	logging.InstantiateLoggers(logging.WithDefaultLevel(defaultLevel))
 
 	args := flag.Args()
 	cli.Ensure(len(args) == 2, cli.ErrorUsage(usage, "Expecting 2 argument, got %d", len(args)))

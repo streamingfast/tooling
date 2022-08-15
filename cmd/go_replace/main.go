@@ -15,8 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var zlog *zap.Logger
-var tracer = logging.ApplicationLogger("go_replace", "github.com/streamingfast/tooling/cmd/go_replace", &zlog)
+var zlog, tracer = logging.ApplicationLogger("go_replace", "github.com/streamingfast/tooling/cmd/go_replace")
 
 func main() {
 	Run("go_replace <id>",
