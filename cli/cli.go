@@ -96,6 +96,36 @@ func NewArgumentScanner(args []string) ArgumentScanner {
 	return &slice
 }
 
+func NewStdinArgumentScanner() (ArgumentScanner, error) {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("stat stdin: %w", err)
+	}
+
+	if (fi.Mode() & os.ModeCharDevice) == 0 {
+		scanner := bufio.NewScanner(os.Stdin)
+		// Let's allow token as long as 50MiB
+		scanner.Buffer(nil, 50*1024*1024)
+
+		return (*bufioArgumentScanner)(scanner), nil
+	}
+
+	return nil, fmt.Errorf("stdin with mode %q is not a char device", fi.Mode())
+}
+
+func NewFileArgumentScanner(path string) (scaner ArgumentScanner, close func() error, err error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open file: %w", err)
+	}
+
+	scanner := bufio.NewScanner(file)
+	// Let's allow token as long as 50MiB
+	scanner.Buffer(nil, 50*1024*1024)
+
+	return (*bufioArgumentScanner)(scanner), file.Close, nil
+}
+
 type bufioArgumentScanner bufio.Scanner
 
 func (s *bufioArgumentScanner) ScanArgument() (string, bool) {
