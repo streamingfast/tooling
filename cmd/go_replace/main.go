@@ -60,8 +60,11 @@ func main() {
 			# Drop replacement github.com/streamingfast/merger
 			go_replace -d merger
 
-			# Install Git hook to ensure no local replacement is pushed
-			go_replace hook install
+			# Install Git hook on specific <project> to ensure no local replacement is pushed
+			cd <project> && go_replace hook install
+
+			# Install Git hook on all Golang project in <projects_dir> (one that has a '.git' folder and at least one 'go.mod' file)
+			cd <projects_dir> && go_replace hook install
 		`),
 		Execute(run),
 		Group(
