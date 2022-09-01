@@ -141,6 +141,8 @@ func (c *Config) FindClusterSpec(clusterName string) *ClusterSpec {
 }
 
 type ClusterSpec struct {
+	// this corresponds to the name in the .kube/config, if it is empty we will use the key
+	Name string `yaml:"name,omitempty"`
 	User string `yaml:"user"`
 }
 

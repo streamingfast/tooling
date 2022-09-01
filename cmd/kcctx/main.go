@@ -116,11 +116,15 @@ func generateKubeConfig(config *Config, input *Input) (*KubeConfig, error) {
 	if clusterSpec.User == "" {
 		return nil, fmt.Errorf("cluster spec named %q does not have a configured user associated with", cluster)
 	}
+	kubeCluster := cluster
+	if clusterSpec.Name != "" {
+		kubeCluster = clusterSpec.Name
+	}
 
 	return &KubeConfig{
 		Name: fmt.Sprintf("%s/%s", cluster, input.Namespace),
 		Context: &KubeContext{
-			Cluster:   cluster,
+			Cluster:   kubeCluster,
 			Namespace: input.Namespace,
 			User:      clusterSpec.User,
 		},
