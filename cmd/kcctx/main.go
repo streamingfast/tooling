@@ -2,9 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
-	"strings"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -12,6 +9,7 @@ import (
 	. "github.com/streamingfast/cli"
 	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
+	"path/filepath"
 )
 
 var zlog, _ = logging.RootLogger("kcctx", "github.com/streamingfast/tooling/cmd/kcctx")
@@ -89,7 +87,7 @@ func execute(cmd *cobra.Command, args []string) error {
 
 	kubeConfigFile := filepath.Join(kubeConfigDirectory, "config")
 	if viper.GetBool("global-local") {
-		kubeConfigFile = filepath.Join(kubeConfigDirectory, "config-"+strings.ReplaceAll(kubeConfig.Name, "/", "-"))
+		kubeConfigFile = filepath.Join(kubeConfigDirectory, "config")
 	}
 
 	if err := kubeMasterConfig.WriteTo(kubeConfigFile); err != nil {
