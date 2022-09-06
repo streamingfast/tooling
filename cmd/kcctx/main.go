@@ -10,6 +10,7 @@ import (
 	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
 	"path/filepath"
+	"strings"
 )
 
 var zlog, _ = logging.RootLogger("kcctx", "github.com/streamingfast/tooling/cmd/kcctx")
@@ -27,7 +28,6 @@ func main() {
 		`),
 		ExactArgs(1),
 		PersistentFlags(func(flags *pflag.FlagSet) {
-			flags.BoolP("local", "l", true, "The environment changes will apply locally to this instance without affecting the other terminals or new ones created")
 			flags.BoolP("global", "g", false, "The environment changes will apply globally to your system affecting the other terminals or new ones created")
 		}),
 		AfterAllHook(func(cmd *cobra.Command) {
@@ -85,11 +85,12 @@ func execute(cmd *cobra.Command, args []string) error {
 	kubeMasterConfig.KeepOnlyClusterWithNameIn(kubeConfig.Context.Cluster)
 	kubeMasterConfig.KeepOnlyUserWithNameIn(kubeConfig.Context.User)
 
-	kubeConfigFile := filepath.Join(kubeConfigDirectory, "config")
-	if viper.GetBool("global-local") {
+	kubeConfigFile := filepath.Join(kubeConfigDirectory, "config-"+strings.ReplaceAll(kubeConfig.Name, "/", "-"))
+	if viper.GetBool("global-global") {
 		kubeConfigFile = filepath.Join(kubeConfigDirectory, "config")
 	}
 
+	zlog.Debug("storing kube context", zap.String("path", kubeConfigFile))
 	if err := kubeMasterConfig.WriteTo(kubeConfigFile); err != nil {
 		return fmt.Errorf("unable to write kube config file: %w", err)
 	}
