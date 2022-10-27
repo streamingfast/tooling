@@ -18,30 +18,44 @@ func main() {
 	fileA := os.Args[1]
 	fileB := os.Args[2]
 
-	setA := readSet(fileA)
-	setB := readSet(fileB)
+	setA, _, fileADuplicateCount := readSet(fileA)
+	setB, _, fileBDuplicateCount := readSet(fileB)
 
-	fmt.Printf("Elements in %q but not in %q\n", fileA, fileB)
+	// In A but not in B
+
 	inANotInB := map[string]bool{}
 	for elementA := range setA {
 		if _, found := setB[elementA]; !found {
 			inANotInB[elementA] = true
 		}
 	}
-	printSet(inANotInB)
 
-	fmt.Println()
-	fmt.Printf("Elements in %q but not in %q\n", fileB, fileA)
+	if len(inANotInB) == 0 {
+		fmt.Println(writeHeader("All elements", "from", fileA, fileADuplicateCount, "are also contained", "in", fileB, fileBDuplicateCount))
+	} else {
+		fmt.Println(writeHeader("Elements", "in", fileA, fileADuplicateCount, "but", "not in", fileB, fileBDuplicateCount))
+		printSet(inANotInB)
+	}
+
+	// In B but not in A
+
 	inBNotInA := map[string]bool{}
 	for elementB := range setB {
 		if _, found := setA[elementB]; !found {
 			inBNotInA[elementB] = true
 		}
 	}
-	printSet(inBNotInA)
 
 	fmt.Println()
-	fmt.Printf("Elements in %q and in %q\n", fileA, fileB)
+	if len(inBNotInA) == 0 {
+		fmt.Println(writeHeader("All elements", "from", fileB, fileBDuplicateCount, "are also contained", "in", fileA, fileADuplicateCount))
+	} else {
+		fmt.Println(writeHeader("Elements", "in", fileB, fileBDuplicateCount, "but", "not in", fileA, fileADuplicateCount))
+		printSet(inBNotInA)
+	}
+
+	// Union
+
 	union := map[string]bool{}
 	for elementA := range setA {
 		if _, found := setB[elementA]; found {
@@ -53,22 +67,78 @@ func main() {
 			union[elementB] = true
 		}
 	}
-	printSet(union)
+
+	fmt.Println()
+	if len(union) == 0 {
+		fmt.Println(writeHeader("No elements in common", "in", fileA, fileADuplicateCount, "and", "in", fileB, fileBDuplicateCount))
+	} else {
+		fmt.Println(writeHeader("Elements", "in", fileA, fileADuplicateCount, "and", "in", fileB, fileBDuplicateCount))
+		printSet(union)
+	}
 }
 
-func readSet(file string) map[string]bool {
-	out := map[string]bool{}
+func writeHeader(prefix string, leftIn string, left string, leftDuplicateCount uint64, operator string, rightIn string, right string, rightDuplicateCount uint64, suffixes ...string) string {
+	header := strings.Builder{}
+	header.WriteString(prefix)
+
+	header.WriteString(" " + leftIn + " ")
+	header.WriteString(`"` + left + `"`)
+	if leftDuplicateCount > 0 {
+		header.WriteString(fmt.Sprintf(" (set contained %d duplicates)", leftDuplicateCount))
+	}
+
+	header.WriteString(" " + operator)
+
+	header.WriteString(" " + rightIn + " ")
+	header.WriteString(`"` + right + `"`)
+	if rightDuplicateCount > 0 {
+		header.WriteString(fmt.Sprintf(" (set contained %d duplicates)", rightDuplicateCount))
+	}
+
+	for _, suffix := range suffixes {
+		header.WriteString(" " + suffix)
+	}
+
+	return header.String()
+}
+
+// This was not working as expected
+// func normalizePath(in string, side string) string {
+// 	if strings.HasPrefix(in, "/dev/fd/") {
+// 		// FIXME: Specially deal with /dev/fd/1 (stdin)?
+// 		if side == "left" {
+// 			return "<(Left)"
+// 		} else if side == "right" {
+// 			return "<(Right)"
+// 		}
+// 	}
+
+// 	return in
+// }
+
+func readSet(file string) (set map[string]bool, duplicates map[string]uint64, duplicateCount uint64) {
+	set = map[string]bool{}
 	data, err := os.ReadFile(file)
 	cli.NoError(err, "unable to read file")
 
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line != "" {
-			out[line] = true
+			existsAlready := set[line]
+			if existsAlready {
+				if duplicates == nil {
+					duplicates = make(map[string]uint64)
+				}
+
+				duplicates[line] = duplicates[line] + 1
+				duplicateCount++
+			}
+
+			set[line] = true
 		}
 	}
 
-	return out
+	return
 }
 
 func printSet(elements map[string]bool) {

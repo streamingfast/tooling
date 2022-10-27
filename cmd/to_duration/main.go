@@ -41,7 +41,7 @@ func main() {
 		cli.Quit("Exclusively one of the unit flag -ns (Nanosecond), -us (Microseond), -ms (Millisecond), -s (Second), -m (Minute) or -h (Hour) must be provided")
 	}
 
-	scanner := cli.NewOsArgumentScanner()
+	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toDuration(element, unit))
 	}
@@ -96,7 +96,8 @@ func durationToUnit(d time.Duration, unit time.Duration) string {
 }
 
 // durationToString is a copy of time.Duration.String() to add spaces between components
-// for easier readability.
+// for easier readability and to add days support even though days can be of different length,
+// we are ok with the 24h approximation in your case.
 func durationToString(d time.Duration) string {
 	// Largest time is 2540400h 10m 10.000000000s
 	var buf [34]byte
@@ -154,12 +155,22 @@ func durationToString(d time.Duration) string {
 			u /= 60
 
 			// u is now integer hours
-			// Stop at hours because days can be different lengths.
+			// Continue at hours (contrary to original code) because we accept the approximation that all days are 24h
 			if u > 0 {
 				w--
 				w--
 				copy(buf[w:], "h ")
-				w = fmtInt(buf[:w], u)
+				w = fmtInt(buf[:w], u%24)
+				u /= 24
+
+				// u is now integer days
+				// Stop at days, it's enough
+				if u > 0 {
+					w--
+					w--
+					copy(buf[w:], "d ")
+					w = fmtInt(buf[:w], u)
+				}
 			}
 		}
 	}
