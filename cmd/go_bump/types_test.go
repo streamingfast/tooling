@@ -27,6 +27,8 @@ func TestUnresolvedPackageID_Resolve(t *testing.T) {
 		{"branch replacement & project", "~test!", defaultConfig, "github.com/streamingfast/test@custom", nil},
 		{"plain dep", "test", defaultConfig, "github.com/streamingfast/test@custom", nil},
 		{"plain dep with manual branch", "test@develop", defaultConfig, "github.com/streamingfast/test@develop", nil},
+		{"plain dep with version", "test@v0.1.0", defaultConfig, "github.com/streamingfast/test@v0.1.0", nil},
+
 		// FIXME: This should work somehow, might be hard to make the interpretation right ....
 		// {"plain dep with manual  namespaced branch", "project@namespace/develop", defaultConfig, "github.com/project/test@namespace/develop", nil},
 		{"monorepo project + name dep", "project/test", defaultConfig, "github.com/streamingfast/project/test@custom", nil},

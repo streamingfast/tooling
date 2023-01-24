@@ -94,7 +94,7 @@ func Test_execute(t *testing.T) {
 			cmd.ExecuteContext(context.Background())
 
 			var outputLines []string
-			err := execute(cmd, tt.args, func(line string) { outputLines = append(outputLines, line) })
+			err := execute(tt.interval, tt.args, func(line string) { outputLines = append(outputLines, line) })
 
 			tt.assertion(t, err)
 			require.Equal(t, tt.want, outputLines)

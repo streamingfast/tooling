@@ -27,9 +27,13 @@ func (u UnresolvedPackageID) Resolve(config *Config) (PackageID, error) {
 	// Only one of @ or ~ is accepted
 	switch {
 	case strings.HasPrefix(in, "@"):
+		zlog.Debug("start with repo shortcut @")
+
 		in = replaceInPackageIDPrefix("@", config.DefaultRepoShortcut, in)
 
 	case strings.HasPrefix(in, "~"):
+		zlog.Debug("start with project shortcut ~")
+
 		if config.DefaultProjectShortcut == "" {
 			return "", fmt.Errorf("unable to resolve package ID %q: no configuration defined for ~ element, must specify a 'default_project_shortcut' config value", in)
 		}
@@ -37,6 +41,8 @@ func (u UnresolvedPackageID) Resolve(config *Config) (PackageID, error) {
 		in = replaceInPackageIDPrefix("~", config.DefaultProjectShortcut, in)
 	case isPlainDependency(in):
 		// Seems to be a plain dependency of the form "test"
+		zlog.Debug("inferred as plain dependency")
+
 		if config.DefaultProjectShortcut == "" {
 			return "", fmt.Errorf("unable to resolve package ID %q: no configuration defined for a plain dependency, must specify a 'default_project_shortcut' config value", in)
 		}
@@ -44,13 +50,16 @@ func (u UnresolvedPackageID) Resolve(config *Config) (PackageID, error) {
 		in = prependToPackageID(config.DefaultProjectShortcut, in)
 
 	case isProjectDependency(in):
+		zlog.Debug("inferred as project dependency")
+
 		// Seems to be a project dependency of the form "<org>/test"
 		if config.DefaultProjectShortcut == "" {
 			return "", fmt.Errorf("unable to resolve package ID %q: no configuration defined for a plain dependency, must specify a 'default_project_shortcut' config value", in)
 		}
 
 		in = prependToPackageID(config.DefaultProjectShortcut, in)
-
+	default:
+		zlog.Debug("unable to infer anything about input")
 	}
 
 	if versionSuffixRegex.MatchString(in) {
@@ -61,7 +70,10 @@ func (u UnresolvedPackageID) Resolve(config *Config) (PackageID, error) {
 		in = in + config.DefaultBranchShortcut
 	}
 
-	return PackageID(in), nil
+	resolved := PackageID(in)
+	zlog.Debug("resolved dependency", zap.String("unresolved", string(u)), zap.String("resolved", string(resolved)))
+
+	return resolved, nil
 }
 
 func isProjectDependency(dep string) bool {
@@ -73,11 +85,15 @@ func isProjectDependency(dep string) bool {
 }
 
 func isPlainDependency(dep string) bool {
-	if strings.Contains(dep, ".") {
+	// We might have "<package>" or "<package>@<version>", in both case, the 'strings.Cut'
+	// left value will always be '<package>', so we can ignore the two other argument.
+	pkg, _, _ := strings.Cut(dep, "@")
+
+	if strings.Contains(pkg, ".") {
 		return false
 	}
 
-	if !strings.Contains(dep, ".") && !strings.Contains(dep, "/") {
+	if !strings.Contains(pkg, ".") && !strings.Contains(pkg, "/") {
 		return true
 	}
 
