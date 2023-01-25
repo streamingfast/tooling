@@ -128,6 +128,13 @@ type Config struct {
 
 	// DefaultBranchShortcut defines value of trailing ! in package id
 	DefaultBranchShortcut string `yaml:"default_branch_shortcut"`
+
+	// AfterBump specify some commands to run successful bump
+	AfterBump *AfterBump `yaml:"after_bump"`
+}
+
+type AfterBump struct {
+	GoModTidy bool `yaml:"go_mod_tidy"`
 }
 
 func LoadConfig(file string) (*Config, error) {
@@ -151,5 +158,6 @@ func newDefaultConfig() *Config {
 	return &Config{
 		DefaultRepoShortcut:   "github.com/",
 		DefaultBranchShortcut: "@develop",
+		AfterBump:             &AfterBump{GoModTidy: false},
 	}
 }
