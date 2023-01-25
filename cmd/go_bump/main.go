@@ -137,38 +137,3 @@ func runGoModTidy(ctx context.Context) {
 func printlnError(message string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, message+"\n", args...)
 }
-
-func usage() string {
-	return `
-Bumps dependency id(s) provided on the currently dectected Golang module,
-commit the changes and create a commit with a standardize message.
-
-The <id> format by defaults use the standard 'go get' format, however, we
-provide some shortcuts:
-
-  GitHub Shortcut               @dfuse-io/bstream@develop (equivalent to github.com/streamingfast/bstream@develop)
-  Default Project Shortcut      ~bstream@develop (equivalent to github.com/streamingfast/bstream@develop)
-  Default Branch Shortcut       ~bstream! (equivalent to github.com/streamingfast/bstream@develop)
-
-You can configure the default values used for ~ and ! via config file '$HOME/config/go_bump/default.yaml'
-that if exists, can override the values
-
-  default_repo_shortcut: github.com                # To define value of leading @
-  default_project_shortcut: github.com/something   # To define value of leading ~
-  default_branch_shortcut: @develop                # To define value of trailing !
-
-If it does *not* start with a ~ or @ character, it is considered a 'go get' format.
-The '!' is still expanded in all situation if it terminates the id.
-`
-}
-
-func silenceUsageOnError(fn func(cmd *cobra.Command, args []string) error) func(cmd *cobra.Command, args []string) error {
-	return func(cmd *cobra.Command, args []string) error {
-		err := fn(cmd, args)
-		if err != nil {
-			cmd.SilenceUsage = true
-		}
-
-		return err
-	}
-}

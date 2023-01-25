@@ -8,7 +8,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
-	github.com/streamingfast/cli v0.0.4-0.20230124223456-bcfbf43dc8cc
+	github.com/streamingfast/cli v0.0.4-0.20230125023849-e5d1052482ea
 	github.com/streamingfast/logging v0.0.0-20221209193439-bff11742bf4c
 	github.com/stretchr/testify v1.7.1
 	go.uber.org/zap v1.21.0

@@ -439,8 +439,8 @@ github.com/spf13/viper v1.12.0/go.mod h1:b6COn30jlNxbm/V2IqWiNWkJ+vZNiMNksliPCiu
 github.com/status-im/keycard-go v0.0.0-20190316090335-8537d3370df4/go.mod h1:RZLeN1LMWmRsyYjvAu+I6Dm9QmlDaIIt+Y+4Kd7Tp+Q=
 github.com/steakknife/bloomfilter v0.0.0-20180922174646-6819c0d2a570/go.mod h1:8OR4w3TdeIHIh1g6EMY5p0gVNOovcWC+1vpc7naMuAw=
 github.com/steakknife/hamming v0.0.0-20180906055917-c99c65617cd3/go.mod h1:hpGUWaI9xL8pRQCTXQgocU38Qw1g0Us7n5PxxTwTCYU=
-github.com/streamingfast/cli v0.0.4-0.20230124223456-bcfbf43dc8cc h1:cqc6bSGaTRkNeyAyj9Ilu0htRHqwUMLVHjN7xKQ5AgU=
-github.com/streamingfast/cli v0.0.4-0.20230124223456-bcfbf43dc8cc/go.mod h1:Z9pBewRFgQZ3YaDR+yMUeYU0W4A3HMV67MXrwRx9Ot0=
+github.com/streamingfast/cli v0.0.4-0.20230125023849-e5d1052482ea h1:htLnAIoFiRxm7k2vd5zdh824Wt4sOXGApWJvG2M7WD4=
+github.com/streamingfast/cli v0.0.4-0.20230125023849-e5d1052482ea/go.mod h1:Z9pBewRFgQZ3YaDR+yMUeYU0W4A3HMV67MXrwRx9Ot0=
 github.com/streamingfast/logging v0.0.0-20221209193439-bff11742bf4c h1:dV1ye/S2PiW9uIWvLtMrxWoTLcZS+yhjZDSKEV102Ho=
 github.com/streamingfast/logging v0.0.0-20221209193439-bff11742bf4c/go.mod h1:VlduQ80JcGJSargkRU4Sg9Xo63wZD/l8A5NC/Uo1/uU=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
