@@ -36,7 +36,17 @@ func main() {
 			skip 1:-2 /tmp/lines.txt
 		`),
 		RangeArgs(1, 2),
-		Execute(func(_ *cobra.Command, args []string) error {
+		BeforeAllHook(func(cmd *cobra.Command) {
+			cmd.DisableFlagParsing = true
+		}),
+		Execute(func(cmd *cobra.Command, args []string) error {
+			for _, arg := range args {
+				if arg == "-h" || arg == "--help" {
+					cmd.Usage()
+					return nil
+				}
+			}
+
 			count, err := parseSkipCount(args[0])
 			NoError(err, "invalid <count> argument")
 
