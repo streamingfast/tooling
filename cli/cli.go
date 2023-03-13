@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -23,6 +24,8 @@ var Base64StdRegexp = regexp.MustCompile(`^[a-zA-z0-9\+\/]+(=){0,2}$`)
 var DecRegexp = regexp.MustCompile(`^[0-9]+$`)
 var HexRegexp = regexp.MustCompile(`^(0(x|X))?[a-fA-F0-9]+$`)
 var SpacesRegexp = regexp.MustCompile(`\s`)
+
+var ErrNoStdin = errors.New("stdin with mode is not a char device")
 
 func Ensure(condition bool, message string, args ...interface{}) {
 	if !condition {
@@ -110,7 +113,7 @@ func NewStdinArgumentScanner() (ArgumentScanner, error) {
 		return (*bufioArgumentScanner)(scanner), nil
 	}
 
-	return nil, fmt.Errorf("stdin with mode %q is not a char device", fi.Mode())
+	return nil, ErrNoStdin
 }
 
 func NewFileArgumentScanner(path string) (scaner ArgumentScanner, close func() error, err error) {
@@ -232,12 +235,23 @@ func AskForConfirmation(message string, args ...interface{}) bool {
 	}
 }
 
-func ReadIntegerToBytes(in string) []byte {
+func ReadInteger(in string) *big.Int {
 	value := new(big.Int)
 	value, success := value.SetString(in, 10)
 	Ensure(success, "number %q is invalid", in)
 
-	return value.Bytes()
+	return value
+}
+
+func ReadIntegerToBytes(in string) []byte {
+	return ReadInteger(in).Bytes()
+}
+
+func ReadReversedInteger(in string, count int) *big.Int {
+	value := new(big.Int)
+	value.SetBytes(ReadReversedIntegerToBytes(in, count))
+
+	return value
 }
 
 func ReadReversedIntegerToBytes(in string, count int) []byte {
@@ -257,21 +271,21 @@ func ReadReversedIntegerToBytes(in string, count int) []byte {
 
 //go:generate go-enum -f=$GOFILE --marshal --names
 
-//
 // ENUM(
-//   None
-//   UnixSeconds
-//   UnixMilliseconds
-// )
 //
+//	None
+//	UnixSeconds
+//	UnixMilliseconds
+//
+// )
 type DateLikeHint uint
 
-//
 // ENUM(
-//   Layout
-//   Timestamp
-// )
 //
+//	Layout
+//	Timestamp
+//
+// )
 type DateParsedFrom uint
 
 var _, localOffset = time.Now().Zone()
