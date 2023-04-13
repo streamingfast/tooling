@@ -359,6 +359,7 @@ var layouts = []string{
 	// Sorted from most probably to less probably
 	time.RFC3339,
 	time.RFC3339Nano,
+	"2006-01-02T15:04:05.999999999-0700",
 	time.UnixDate,
 	time.RFC850,
 	time.RubyDate,
