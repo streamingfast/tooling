@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/streamingfast/cli"
 	. "github.com/streamingfast/cli"
+	"github.com/streamingfast/cli/sflags"
 	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
 )
@@ -71,7 +71,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	shouldRunModTidy, provided := cli.MustGetBoolProvided(cmd, "tidy")
+	shouldRunModTidy, provided := sflags.MustGetBoolProvided(cmd, "tidy")
 	if provided {
 		config.AfterBump.GoModTidy = shouldRunModTidy
 	}
