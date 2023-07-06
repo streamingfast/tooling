@@ -22,6 +22,7 @@ const Unlimited = math.MaxInt64
 var flagVerbose = flag.Bool("v", false, "Activate debugging log output")
 var flagDryRun = flag.Bool("n", false, "Dry-run the call make it only output filename instead of real delete")
 var flagForce = flag.Bool("f", false, "Force running the command without asking for user intervention")
+var flagProject = flag.String("project", "", "Project to use for the GCS bucket")
 
 var bucket *storage.BucketHandle
 var bucketURL *url.URL
@@ -64,7 +65,13 @@ func main() {
 		zap.String("bucket", bucketName),
 		zap.String("object_prefix", objectPrefix),
 	)
-	bucket = client.Bucket(bucketName)
+
+	if *flagProject == "" {
+		bucket = client.Bucket(bucketName)
+	} else {
+		zlog.Info("Using project", zap.String("project", *flagProject))
+		bucket = client.Bucket(bucketName).UserProject(*flagProject)
+	}
 
 	firstFiveFiles := []string{}
 	err = listFiles(ctx, objectPrefix, func(f string) {
