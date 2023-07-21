@@ -11,7 +11,7 @@ import (
 	"github.com/streamingfast/tooling/cli"
 )
 
-var maybeDurationRegex = regexp.MustCompile("^[-0-9\\.( |h|m|s|ms|µs|ns)]+$")
+var maybeDurationRegex = regexp.MustCompile(`^[-0-9\.( |h|m|s|ms|µs|ns)]+$`)
 
 var asNanoseconds = flag.Bool("ns", false, "Decode the value as having nanosecond unit")
 var asMicroseconds = flag.Bool("us", false, "Decode the value as having microsecond unit")
@@ -19,16 +19,19 @@ var asMillisecondsFlag = flag.Bool("ms", false, "Decode the value as having mill
 var asSecondsFlag = flag.Bool("s", false, "Decode the value as having second unit")
 var asMinutesFlag = flag.Bool("m", false, "Decode the value as having minute unit")
 var asHoursFlag = flag.Bool("h", false, "Decode the value as having hour unit")
+var asDaysFlag = flag.Bool("d", false, "Decode the value as having day unit (24h approximation)")
+
+var inferedUnit time.Duration
 
 func main() {
 	flag.Parse()
 
-	var unit time.Duration
+	var unit = inferedUnit
 	switch {
 	case *asNanoseconds:
 		unit = time.Nanosecond
 	case *asMicroseconds:
-		unit = time.Nanosecond
+		unit = time.Microsecond
 	case *asMillisecondsFlag:
 		unit = time.Millisecond
 	case *asSecondsFlag:
@@ -37,8 +40,8 @@ func main() {
 		unit = time.Minute
 	case *asHoursFlag:
 		unit = time.Hour
-	default:
-		cli.Quit("Exclusively one of the unit flag -ns (Nanosecond), -us (Microseond), -ms (Millisecond), -s (Second), -m (Minute) or -h (Hour) must be provided")
+	case *asDaysFlag:
+		unit = time.Hour * 24
 	}
 
 	scanner := cli.NewFlagArgumentScanner()
@@ -53,6 +56,10 @@ func toDuration(element string, unit time.Duration) string {
 	}
 
 	if cli.DecRegexp.MatchString(element) {
+		if unit == inferedUnit {
+			cli.Quit("No time suffix detected, one of the unit flag -ns (Nanosecond), -us (Microseond), -ms (Millisecond), -s (Second), -m (Minute) or -h (Hour) must be provided in that case")
+		}
+
 		value, _ := strconv.ParseInt(element, 10, 64)
 
 		return durationToString(time.Duration(value) * unit)
@@ -71,25 +78,31 @@ func toDuration(element string, unit time.Duration) string {
 }
 
 func durationToUnit(d time.Duration, unit time.Duration) string {
+	if unit == inferedUnit {
+		return durationToString(d)
+	}
+
 	switch unit {
 	case time.Nanosecond:
-		return strconv.FormatInt(d.Nanoseconds(), 10)
+		return strconv.FormatInt(d.Nanoseconds(), 10) + "ns"
 	case time.Microsecond:
 		usec := d / time.Microsecond
 		nusec := d % time.Microsecond
 
-		return strconv.FormatFloat(float64(usec)+float64(nusec)/1e3, 'f', -1, 64)
+		return strconv.FormatFloat(float64(usec)+float64(nusec)/1e3, 'f', 3, 64) + "µs"
 	case time.Millisecond:
 		msec := d / time.Millisecond
 		nmsec := d % time.Millisecond
 
-		return strconv.FormatFloat(float64(msec)+float64(nmsec)/1e6, 'f', -1, 64)
+		return strconv.FormatFloat(float64(msec)+float64(nmsec)/1e6, 'f', 3, 64) + "ms"
 	case time.Second:
-		return strconv.FormatFloat(d.Seconds(), 'f', -1, 64)
+		return strconv.FormatFloat(d.Seconds(), 'f', 3, 64) + "s"
 	case time.Minute:
-		return strconv.FormatFloat(d.Minutes(), 'f', -1, 64)
+		return strconv.FormatFloat(d.Minutes(), 'f', 3, 64) + "m"
 	case time.Hour:
-		return strconv.FormatFloat(d.Hours(), 'f', -1, 64)
+		return strconv.FormatFloat(d.Hours(), 'f', 3, 64) + "h"
+	case time.Hour * 24:
+		return strconv.FormatFloat(d.Hours()/24.0, 'f', 3, 64) + "d"
 	default:
 		panic(fmt.Errorf("invalid unit %s, should have matched one of the pre-defined unit", unit))
 	}
