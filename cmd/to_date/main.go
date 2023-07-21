@@ -52,5 +52,5 @@ func toDate(element string) (out string) {
 }
 
 func formatDate(in time.Time) string {
-	return fmt.Sprintf("%s (%s)", in.Local().Format(time.RFC3339), in.Format(time.RFC3339))
+	return fmt.Sprintf("%s (%s)", in.Local().Format(time.RFC3339), in.UTC().Format(time.RFC3339))
 }

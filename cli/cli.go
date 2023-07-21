@@ -352,7 +352,11 @@ func fromUnixMilliseconds(value uint64) time.Time {
 }
 
 func adjustBackToLocal(in time.Time) time.Time {
-	return in.Add(-1 * time.Duration(int64(localOffset)) * time.Second)
+	if in.Location() == time.UTC {
+		return in.Add(-1 * time.Duration(int64(localOffset)) * time.Second)
+	}
+
+	return in
 }
 
 var layouts = []string{
