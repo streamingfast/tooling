@@ -18,6 +18,7 @@ func Test_fromLayouts(t *testing.T) {
 		want    want
 	}{
 		{"2023-04-13T14:25:27.180-0400", want{time.Unix(1681410327, 180000000), DateParsedFromLayout, true}},
+		{"Wed Aug 09 2023 22:02:05 GMT-0400", want{time.Unix(1691647325, 0), DateParsedFromLayout, true}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.element, func(t *testing.T) {

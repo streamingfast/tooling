@@ -377,4 +377,6 @@ var layouts = []string{
 var localLayouts = []string{
 	// Seen on some websites
 	"Jan-02-2006 15:04:05 PM",
+
+	"Mon Jan 02 2006 15:04:05 GMT-0700",
 }
