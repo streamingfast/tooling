@@ -14,9 +14,17 @@ var asUnixMillis = flag.Bool("ms", false, "Avoid heuristics based to determine d
 func main() {
 	flag.Parse()
 
+	count := 0
+
 	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 		fmt.Println(toDate(element))
+
+		count++
+	}
+
+	if count == 0 {
+		fmt.Println(formatDate(time.Now()))
 	}
 }
 
