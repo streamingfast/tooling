@@ -45,6 +45,8 @@ func main() {
 		PersistentFlags(func(flags *pflag.FlagSet) {
 			flags.StringP("filter", "f", "", "Column filter specification, a single column or a range, multiple can be specified by separating with commas")
 			flags.StringP("delimiter", "d", " ", "Column delimiter to determine how to split the row in columns")
+			flags.StringP("merged", "m", " ", "Send columns as one input and replace all columns with received output from command execution")
+
 		}),
 		BeforeAllHook(func(cmd *cobra.Command) {
 			cmd.DisableFlagParsing = true
@@ -68,7 +70,7 @@ func main() {
 
 			for line, ok := scanner.ScanArgument(); ok; line, ok = scanner.ScanArgument() {
 				columns := strings.Split(line, parsed.Delimiter)
-				selected, err := parsed.ColumnSelector.Select(columns)
+				selected, err := parsed.ColumnSelector.Select(columns, parsed.MergedInput)
 				cli.NoError(err, "Unable to select column(s) from line")
 
 				mapped, err := mapColumns(parsed.Command, parsed.Arguments, selected)
@@ -85,37 +87,66 @@ func main() {
 	)
 }
 
-type ColumnFilter []int
+type Range [2]int
 
-func (f ColumnFilter) Select(columns []string) (selection []string, err error) {
-	seen := map[int]bool{}
-	for _, columnIndex := range f {
-		if seen[columnIndex] {
-			continue
+func (r Range) IndexFor(x int) int {
+	return x - r[0]
+}
+
+func (r Range) OrdinalFor(x int) int {
+	return r.IndexFor(x) + 1
+}
+
+func (r Range) InclusiveStart() int {
+	return r[0]
+}
+
+func (r Range) InclusiveEnd() int {
+	return r[1]
+}
+
+func (r Range) Count() int {
+	return (r[1] - r[0]) + 1
+}
+
+func (r Range) String() string {
+	return fmt.Sprintf("%d:%d", r[0], r[1])
+}
+
+type ColumnFilter []Range
+
+func (f ColumnFilter) Select(columns []string, mergedInput bool) (selection MappedColumn, err error) {
+	selection = make(MappedColumn, len(f))
+	for _, columnRange := range f {
+		selection[columnRange] = make([]string, columnRange.Count())
+		for columnIndex := columnRange.InclusiveStart(); columnIndex <= columnRange.InclusiveEnd(); columnIndex++ {
+			if columnIndex >= len(columns) {
+				return nil, fmt.Errorf("column index %d is out of bounds, got only %d columns", columnIndex, len(columns))
+			}
+
+			selection[columnRange][columnRange.IndexFor(columnIndex)] = columns[columnIndex]
 		}
-
-		if columnIndex >= len(columns) {
-			return nil, fmt.Errorf("column index %d is out of bounds, got only %d columns", columnIndex, len(columns))
-		}
-
-		selection = append(selection, columns[columnIndex])
 	}
 
 	return
 }
 
+type MappedColumn map[Range][]string
+
 func (f ColumnFilter) Replace(columns []string, mapped []string) (replaced []string, err error) {
-	mapping := map[int]string{}
-	for i, columnIndex := range f {
-		if mapping[columnIndex] != "" {
-			continue
-		}
+	mapping := map[int][]string{}
+	for i, columnRange := range f {
+		for columnIndex := columnRange.InclusiveStart; columnIndex <= columnRange.InclusiveEnd; columnIndex++ {
+			if mapping[i] != "" {
+				continue
+			}
 
-		if i >= len(mapped) {
-			return nil, fmt.Errorf("column index at position %d not found in mapped column of length %d", i, len(mapped))
-		}
+			if i >= len(mapped) {
+				return nil, fmt.Errorf("column index at position %d not found in mapped column of length %d", i, len(mapped))
+			}
 
-		mapping[columnIndex] = mapped[i]
+			mapping[i] = mapped[i]
+		}
 	}
 
 	replaced = make([]string, len(columns))
@@ -134,6 +165,7 @@ func (f ColumnFilter) Replace(columns []string, mapped []string) (replaced []str
 type CLI struct {
 	ColumnSelector ColumnFilter
 	Delimiter      string
+	MergedInput    bool
 	Command        string
 	Arguments      []string
 }
@@ -151,6 +183,9 @@ func parseFlagsAndArguments(args []string) (parsed *CLI, usage bool, err error) 
 		switch arg {
 		case "-h", "--help":
 			return nil, true, nil
+
+		case "-m", "--merged":
+			parsed.MergedInput = true
 
 		case "-f", "--filter":
 			if i+1 >= argumentCount {
@@ -182,7 +217,7 @@ func parseFlagsAndArguments(args []string) (parsed *CLI, usage bool, err error) 
 	}
 
 	if parsed.Command == "" {
-		return nil, false, fmt.Errorf("The <program> argument is mandatory")
+		return nil, false, fmt.Errorf("the <program> argument is mandatory")
 	}
 
 	return
@@ -236,13 +271,18 @@ func parseColumnFilterElement(in string) (out ColumnFilter, err error) {
 	return out, nil
 }
 
-func mapColumns(command string, arguments []string, selected []string) (out []string, err error) {
+func mapColumns(command string, arguments []string, selected map[Range][]string, mergedInput bool) (out []string, err error) {
 	templated := false
 	finalArguments := make([]string, 0, len(arguments)+len(selected))
 	for _, argument := range arguments {
 		if argument == "{}" {
 			templated = true
-			finalArguments = append(finalArguments, selected...)
+			if mergedInput {
+				finalArguments = append(finalArguments, selected...)
+			} else {
+				finalArguments = append(finalArguments, selected...)
+			}
+
 		} else {
 			finalArguments = append(finalArguments, argument)
 		}
