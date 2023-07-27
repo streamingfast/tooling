@@ -10,13 +10,16 @@ import (
 	"github.com/streamingfast/tooling/cli"
 )
 
+var summaryOnly = flag.Bool("s", false, "Print only a summary of the comparison, not every elements")
+
 func main() {
 	flag.Parse()
+	args := flag.Args()
 
-	cli.Ensure(len(os.Args) == 3, "usage: sets <fileA> <fileB>")
+	cli.Ensure(len(args) == 2, "usage: sets <fileA> <fileB>")
 
-	fileA := os.Args[1]
-	fileB := os.Args[2]
+	fileA := args[0]
+	fileB := args[1]
 
 	setA, _, fileADuplicateCount := readSet(fileA)
 	setB, _, fileBDuplicateCount := readSet(fileB)
@@ -31,9 +34,9 @@ func main() {
 	}
 
 	if len(inANotInB) == 0 {
-		fmt.Println(writeHeader("All elements", "from", fileA, fileADuplicateCount, "are also contained", "in", fileB, fileBDuplicateCount))
+		printHeader("All elements", "from", fileA, fileADuplicateCount, "are also contained", "in", fileB, fileBDuplicateCount, fmt.Sprintf("[%d element]", len(setB)))
 	} else {
-		fmt.Println(writeHeader("Elements", "in", fileA, fileADuplicateCount, "but", "not in", fileB, fileBDuplicateCount))
+		printHeader("Elements", "in", fileA, fileADuplicateCount, "but", "not in", fileB, fileBDuplicateCount, fmt.Sprintf("[%d element]", len(inANotInB)))
 		printSet(inANotInB)
 	}
 
@@ -48,9 +51,9 @@ func main() {
 
 	fmt.Println()
 	if len(inBNotInA) == 0 {
-		fmt.Println(writeHeader("All elements", "from", fileB, fileBDuplicateCount, "are also contained", "in", fileA, fileADuplicateCount))
+		printHeader("All elements", "from", fileB, fileBDuplicateCount, "are also contained", "in", fileA, fileADuplicateCount, fmt.Sprintf("[%d element]", len(setB)))
 	} else {
-		fmt.Println(writeHeader("Elements", "in", fileB, fileBDuplicateCount, "but", "not in", fileA, fileADuplicateCount))
+		printHeader("Elements", "in", fileB, fileBDuplicateCount, "but", "not in", fileA, fileADuplicateCount, fmt.Sprintf("[%d element]", len(inBNotInA)))
 		printSet(inBNotInA)
 	}
 
@@ -70,14 +73,14 @@ func main() {
 
 	fmt.Println()
 	if len(union) == 0 {
-		fmt.Println(writeHeader("No elements in common", "in", fileA, fileADuplicateCount, "and", "in", fileB, fileBDuplicateCount))
+		printHeader("No elements in common", "in", fileA, fileADuplicateCount, "and", "in", fileB, fileBDuplicateCount)
 	} else {
-		fmt.Println(writeHeader("Elements", "in", fileA, fileADuplicateCount, "and", "in", fileB, fileBDuplicateCount))
+		printHeader("Elements", "in", fileA, fileADuplicateCount, "and", "in", fileB, fileBDuplicateCount, fmt.Sprintf("[%d element]", len(union)))
 		printSet(union)
 	}
 }
 
-func writeHeader(prefix string, leftIn string, left string, leftDuplicateCount uint64, operator string, rightIn string, right string, rightDuplicateCount uint64, suffixes ...string) string {
+func printHeader(prefix string, leftIn string, left string, leftDuplicateCount uint64, operator string, rightIn string, right string, rightDuplicateCount uint64, suffixes ...string) {
 	header := strings.Builder{}
 	header.WriteString(prefix)
 
@@ -99,7 +102,11 @@ func writeHeader(prefix string, leftIn string, left string, leftDuplicateCount u
 		header.WriteString(" " + suffix)
 	}
 
-	return header.String()
+	if *summaryOnly {
+		fmt.Print(header.String())
+	} else {
+		fmt.Println(header.String())
+	}
 }
 
 // This was not working as expected
@@ -142,6 +149,10 @@ func readSet(file string) (set map[string]bool, duplicates map[string]uint64, du
 }
 
 func printSet(elements map[string]bool) {
+	if *summaryOnly {
+		return
+	}
+
 	i := 0
 	sorted := make([]string, len(elements))
 	for element := range elements {
