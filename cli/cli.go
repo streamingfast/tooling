@@ -376,11 +376,21 @@ var layouts = []string{
 	time.StampMilli,
 	time.StampMicro,
 	time.StampNano,
+
+	// Not sure where seen
+	"Mon Jan 02 2006 15:04:05 GMT-0700",
+
+	// Not sure where seen
+	"Mon Jan 02 15:04:05 2006 -0700",
 }
 
 var localLayouts = []string{
 	// Seen on some websites
 	"Jan-02-2006 15:04:05 PM",
 
-	"Mon Jan 02 2006 15:04:05 GMT-0700",
+	// Variation of non-local version, see in `layouts` list
+	"Mon Jan 02 2006 15:04:05",
+
+	// Variation of non-local version, see in `layouts` list
+	"Mon Jan 02 15:04:05 2006",
 }
