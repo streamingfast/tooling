@@ -352,6 +352,10 @@ func fromUnixMilliseconds(value uint64) time.Time {
 }
 
 func adjustBackToLocal(in time.Time) time.Time {
+	if in.Year() == 0 {
+		in = in.AddDate(time.Now().Year(), 0, 0)
+	}
+
 	if in.Location() == time.UTC {
 		return in.Add(-1 * time.Duration(int64(localOffset)) * time.Second)
 	}
@@ -387,6 +391,9 @@ var layouts = []string{
 var localLayouts = []string{
 	// Seen on some websites
 	"Jan-02-2006 15:04:05 PM",
+
+	// Seen on Polygon logs
+	"01-02|15:04:05.999999999",
 
 	// Variation of non-local version, see in `layouts` list
 	"Mon Jan 02 2006 15:04:05",
