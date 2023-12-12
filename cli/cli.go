@@ -166,6 +166,9 @@ func (s *stringSliceArgumentScanner) ScanArgument() (string, bool) {
 // ProcessStandardInputBytes reads standard input using a buffer as big as `bufferSize`
 // and pass the read bytes to `processor` function. The number of bytes received by the
 // `processor` function might be lower than buffer size but will never be bigger than it.
+//
+// If you pass -1 to bufferSize, the whole standard input will be read and passed to the
+// `processor` function in one shot.
 func ProcessStandardInputBytes(bufferSize int, processor func(bytes []byte)) {
 	fi, err := os.Stdin.Stat()
 	NoError(err, "unable to stat stdin")
@@ -173,7 +176,14 @@ func ProcessStandardInputBytes(bufferSize int, processor func(bytes []byte)) {
 
 	reader := bufio.NewReader(os.Stdin)
 
-	buf := make([]byte, bufferSize)
+	full := bytes.NewBuffer(nil)
+
+	size := bufferSize
+	if size < 0 {
+		size = 64 * 1024
+	}
+
+	buf := make([]byte, size)
 	for {
 		n, err := reader.Read(buf)
 		if err == io.EOF {
@@ -181,8 +191,17 @@ func ProcessStandardInputBytes(bufferSize int, processor func(bytes []byte)) {
 			break
 		}
 
-		NoError(err, "unable to read %d bytes stdin", bufferSize)
-		processor(buf[0:n])
+		NoError(err, "unable to read %d bytes stdin", size)
+
+		if bufferSize < 0 {
+			full.Write(buf[0:n])
+		} else {
+			processor(buf[0:n])
+		}
+	}
+
+	if bufferSize < 0 {
+		processor(full.Bytes())
 	}
 }
 

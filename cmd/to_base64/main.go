@@ -25,7 +25,7 @@ func main() {
 			"Flag -in is exclusive and cannot be used at the same time as any of -hex, -b58, -i nor -s",
 		)
 
-		cli.ProcessStandardInputBytes(16, func(bytes []byte) { fmt.Print(base64Encode(bytes)) })
+		cli.ProcessStandardInputBytes(-1, func(bytes []byte) { fmt.Print(base64Encode(bytes)) })
 		fmt.Println()
 
 		return
