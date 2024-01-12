@@ -51,6 +51,10 @@ func End(message string, args ...interface{}) {
 
 func EncodeHex(in []byte) string {
 	hex := hex.EncodeToString(in)
+	if len(hex) == 0 {
+		return "00"
+	}
+
 	if len(hex)%2 == 1 {
 		hex = "0" + hex
 	}

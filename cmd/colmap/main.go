@@ -14,6 +14,10 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+// Row is a row of columns, each element of the array being a column in the row.
+// The row are ordered from left to right, left being column at index 0.
+type Row []string
+
 func main() {
 	Run(
 		"colmap -f <spec> [-d <delimiter>] <program> <args> {}",
@@ -33,13 +37,23 @@ func main() {
 			is invoked for each row and receives all matched column(s) as argument(s).
 
 			The <spec> for column selection is the same as 'cut' so a single number,
-			a range '1:2'.
+			a range '1:2'. The columns are numbered from 1 so the first column is 1 and the
+			last column ordinal is N (where N is the number of columns).
 
 			The {} can be used in the invoked program to exactly place the arguments.
 		`),
 		Example(`
 			# Make upper case the second column, each column is delimited by ' '
-			colmap -d ' ' -f 2 to_upper
+			echo "john 7171a\njane 9b5e61" | colmap -f 2 -d ' ' to_upper
+
+			# Make upper case the first and the second, each column is delimited by ' '
+			#
+			# The 'to_upper' program will receive the first column as first argument and the second
+			# column as second argument
+			#
+			# The output of the command 'to_upper' is expected to be on multiple lines, one line per
+			# argument.
+			echo "john 7171a\njane 9b5e61" | colmap -f 1:2 -d ' ' to_upper
 		`),
 		MinimumNArgs(3),
 		PersistentFlags(func(flags *pflag.FlagSet) {
@@ -67,14 +81,14 @@ func main() {
 			NoError(err, "unable to create 'stdin' scanner")
 
 			for line, ok := scanner.ScanArgument(); ok; line, ok = scanner.ScanArgument() {
-				columns := strings.Split(line, parsed.Delimiter)
-				selected, err := parsed.ColumnSelector.Select(columns)
+				row := Row(strings.Split(line, parsed.Delimiter))
+				selected, err := parsed.ColumnSelector.Select(row)
 				cli.NoError(err, "Unable to select column(s) from line")
 
 				mapped, err := mapColumns(parsed.Command, parsed.Arguments, selected)
 				cli.NoError(err, "Unable to map column(s) from line")
 
-				replaced, err := parsed.ColumnSelector.Replace(columns, mapped)
+				replaced, err := parsed.ColumnSelector.Replace(row, mapped)
 				cli.NoError(err, "Unable to replace column(s) from line")
 
 				fmt.Println(strings.Join(replaced, parsed.Delimiter))
@@ -87,40 +101,45 @@ func main() {
 
 type ColumnFilter []int
 
-func (f ColumnFilter) Select(columns []string) (selection []string, err error) {
+func (f ColumnFilter) Select(row Row) (selection []string, err error) {
 	seen := map[int]bool{}
-	for _, columnIndex := range f {
-		if seen[columnIndex] {
+	for _, columnOrdinal := range f {
+		if seen[columnOrdinal] {
 			continue
 		}
 
-		if columnIndex >= len(columns) {
-			return nil, fmt.Errorf("column index %d is out of bounds, got only %d columns", columnIndex, len(columns))
+		if columnOrdinal < 0 {
+			return nil, fmt.Errorf("column ordinal %d is out of bounds", columnOrdinal)
 		}
 
-		selection = append(selection, columns[columnIndex])
+		if columnOrdinal > len(row) {
+			return nil, fmt.Errorf("column ordinal %d is out of bounds, got only %d columns", columnOrdinal, len(row))
+		}
+
+		selection = append(selection, row[columnOrdinal-1])
 	}
 
 	return
 }
 
-func (f ColumnFilter) Replace(columns []string, mapped []string) (replaced []string, err error) {
+func (f ColumnFilter) Replace(row Row, mapped []string) (replaced []string, err error) {
 	mapping := map[int]string{}
-	for i, columnIndex := range f {
-		if mapping[columnIndex] != "" {
+	for i, columnOrdinal := range f {
+		// Column already mapped, skip
+		if mapping[columnOrdinal] != "" {
 			continue
 		}
 
 		if i >= len(mapped) {
-			return nil, fmt.Errorf("column index at position %d not found in mapped column of length %d", i, len(mapped))
+			return nil, fmt.Errorf("mapped index at position %d not found in mapped column of length %d", i, len(mapped))
 		}
 
-		mapping[columnIndex] = mapped[i]
+		mapping[columnOrdinal] = mapped[i]
 	}
 
-	replaced = make([]string, len(columns))
-	for i, column := range columns {
-		mapped, found := mapping[i]
+	replaced = make([]string, len(row))
+	for i, column := range row {
+		mapped, found := mapping[i+1]
 		if found {
 			replaced[i] = mapped
 		} else {
@@ -182,7 +201,7 @@ func parseFlagsAndArguments(args []string) (parsed *CLI, usage bool, err error) 
 	}
 
 	if parsed.Command == "" {
-		return nil, false, fmt.Errorf("The <program> argument is mandatory")
+		return nil, false, fmt.Errorf("the <program> argument is mandatory")
 	}
 
 	return

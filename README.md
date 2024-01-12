@@ -12,7 +12,7 @@ A bunch of command line tools that is used by multiple developers within Streami
 
 #### Install
 
-To install the Golang utilities, simply use `./scripts/install_all.sh`.
+To install all our CLI utilities, you can use `go install .cmd/...`.
 
 #### Usage
 
@@ -20,21 +20,102 @@ Most (if not all) of the tools accept their arguments through standard input
 or from command line arguments directly. It's one or the other and standard input
 takes precedence if found to be coming from a script.
 
+- [bytes](#humanize-bytes-value) - Humanize bytes value
+- [colmap](#map-a-specific-columns-over-rows-by-applying-a-command-to-the-columns-value) - Map a specific column(s) over rows by applying a command to the column's value
+- [deltas](#compute-deltas-between-successive-lines) - Compute deltas between successive lines
+- [go_replace](#go_replace) - Golang module local replace helper
+- [skip](#skip-lines-at-the-beginning-or-end) - Skip line(s) at the beginning or end
+- [stats](#computes-statistics-about-numbers-received) - Computes statistics about numbers received
+- [to_ascii](#converts-input-to-ascii) - Converts input to ASCII string
 - [to_hex](#converts-input-to-hexadecimal-encoded-string) - Converts input to hexadecimal encoded string
 - [to_base58](#converts-input-to-base58-encoded-string) - Converts input to Base58 encoded string
 - [to_base64](#converts-input-to-base64-encoded-string) - Converts input to Base64 encoded string
 - [to_dec](#converts-input-to-integer-arbitrary-precision) - Converts input to integer (arbitrary precision)
 - [to_date](#converts-input-to-iso-8601-string-format) - Converts input to ISO-8601 string format
-- [bytes](#humanize-bytes-value) - Humanize bytes value
 - [to_duration](#converts-input-to-duration) - Converts input to duration
 - [to_lower](#transforms-input-to-lower-case) - Transforms input to lower case
 - [to_upper](#transforms-input-to-upper-case) - Transforms input to upper case
-- [stats](#computes-statistics-about-numbers-received) - Computes statistics about numbers received
-- [go_replace](#go_replace) - Golang module local replace helper
+
+##### Converts input to ASCII string
+
+```bash
+# By default assumes hex
+to_ascii 68656c6c6f
+hello
+
+# Invalid characters are replaced by . so can be used on binary to "see" string(s)
+$ cat file.png | to_ascii -in
+.PNG
+.
+IHDR...
+       ...
+          .....Vu\ç...	pHYs..
+
+# Works with input a base58
+to_ascii -b58 Cn8eVZg
+hello
+
+# Works with input a base64
+to_ascii -b64 aGVsbG8=
+hello
+```
+
+##### Skip line(s) at the beginning or end
+
+> [!NOTE]
+> This is a companion to `head` and `tail`, can be seen as a shortcut of using the two for some uses
+
+```bash
+# Skip at beginning
+echo "1\n2\n3\n4" | skip 2
+3
+4
+
+# Skip at end
+echo "1\n2\n3\n4" | skip -2
+1
+2
+```
+
+##### Map a specific column(s) over rows by applying a command to the column's value
+
+```bash
+# Map a single column
+echo "john 7171a\njane 9b5e61" | colmap -f 2 -d ' ' to_upper
+john 7171A
+jane 9B5E61
+
+# Map a multiple columns
+echo "john 7171a\njane 9b5e61" | colmap -f 1:2 -d ' ' to_upper
+JOHN 7171A
+JANE 9B5E61
+```
+
+##### Compute deltas between successive lines
+
+```bash
+# From arguments
+deltas 1 2 44
+1 (-)
+2 (+1)
+44 (+42)
+
+# From stdin
+echo "1\n2\n44" | deltas
+1 (-)
+2 (+1)
+44 (+42)
+
+# Works with timestamp too (a lot of formats accepted), useful for logs deltas
+echo "2024-01-12T10:07:15.510-0500\n2024-01-12T10:17:20.139-0500\n2024-01-12T10:17:45.508-0500" | deltas
+2024-01-12T10:07:15.510-0500 (-)
+2024-01-12T10:17:20.139-0500 (+10m4.629s)
+2024-01-12T10:17:45.508-0500 (+25.369s)
+```
 
 ##### Converts input to hexadecimal encoded string
 
-```
+```bash
 # As base58
 to_hex -b58 5PzCau
 abfe0102
@@ -74,7 +155,7 @@ bb85976f46bc1a576e141aa73268cc9a
 
 Converts to Base64 Standard Encoding, use `-url` flag to convert to URL safe encoder instead.
 
-```
+```bash
 # Inferred as hex if all characters are in the hexadecimal characters set
 to_base64 abfe0102
 q/4BAg==
@@ -112,7 +193,7 @@ ebWxHXskW2fMMOL2QQUY8w==
 
 ##### Converts input to Base58 encoded string
 
-```
+```bash
 # Infer hex is all characters
 to_base58 abfe0102
 5PzCau
@@ -154,7 +235,7 @@ cat /dev/random | head -c 16 | to_base58 -in
 
 ##### Converts input to ISO-8601 string format
 
-```
+```bash
 # Parse as Unix milliseconds (milliseconds inferred)
 to_date 1600446733000
 2020-09-18T12:32:13-04:00 (2020-09-18T16:32:13Z)
@@ -166,11 +247,15 @@ to_date 1600446733
 # Parse as Golang date layout (multiple layouts tried one after the other)
 to_date 2020-09-18T16:32:13Z
 2020-09-18T12:32:13-04:00 (2020-09-18T16:32:13Z)
+
+# Get date now (local + UTC)
+to_date
+2024-01-12T10:19:18-05:00 (2024-01-12T15:19:18Z)
 ```
 
 ##### Converts input to integer (arbitrary precision)
 
-```
+```bash
 to_dec 01e240
 123456
 
@@ -181,7 +266,7 @@ to_dec 21e19e0c9bab2400000
 
 ##### Humanize bytes value
 
-```
+```bash
 # As SI standard (base quantity is 1000) so KB, MB, etc.
 bytes 100000000
 100.00 MB
