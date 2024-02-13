@@ -26,7 +26,7 @@ takes precedence if found to be coming from a script.
 - [go_replace](#go_replace) - Golang module local replace helper
 - [skip](#skip-lines-at-the-beginning-or-end) - Skip line(s) at the beginning or end
 - [stats](#computes-statistics-about-numbers-received) - Computes statistics about numbers received
-- [to_ascii](#converts-input-to-ascii) - Converts input to ASCII string
+- [to_ascii](#converts-input-to-ascii-string) - Converts input to ASCII string
 - [to_hex](#converts-input-to-hexadecimal-encoded-string) - Converts input to hexadecimal encoded string
 - [to_base58](#converts-input-to-base58-encoded-string) - Converts input to Base58 encoded string
 - [to_base64](#converts-input-to-base64-encoded-string) - Converts input to Base64 encoded string
