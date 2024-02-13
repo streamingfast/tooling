@@ -40,7 +40,7 @@ func main() {
 			for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
 				lineCount++
 
-				timestamp, parsedFrom, ok := cli.ParseDateLikeInput(element, cli.DateLikeHintNone)
+				timestamp, parsedFrom, ok := cli.ParseDateLikeInput(element, cli.DateLikeHintNone, time.Local)
 				if ok && parsedFrom == cli.DateParsedFromLayout {
 					if previousTimestamp.IsZero() {
 						previousTimestamp = timestamp

@@ -313,7 +313,7 @@ type DateParsedFrom uint
 
 var _, localOffset = time.Now().Zone()
 
-func ParseDateLikeInput(element string, hint DateLikeHint) (out time.Time, parsedFrom DateParsedFrom, ok bool) {
+func ParseDateLikeInput(element string, hint DateLikeHint, timezoneIfUnset *time.Location) (out time.Time, parsedFrom DateParsedFrom, ok bool) {
 	if element == "" {
 		return out, 0, false
 	}
@@ -341,12 +341,11 @@ func ParseDateLikeInput(element string, hint DateLikeHint) (out time.Time, parse
 		// In all other cases, we assume it's a Unix milliseconds
 		return fromUnixMilliseconds(value), DateParsedFromTimestamp, true
 	}
-
 	// Try all layouts we support
-	return fromLayouts(element)
+	return fromLayouts(element, timezoneIfUnset)
 }
 
-func fromLayouts(element string) (out time.Time, parsedFrom DateParsedFrom, ok bool) {
+func fromLayouts(element string, timezone *time.Location) (out time.Time, parsedFrom DateParsedFrom, ok bool) {
 	for _, layout := range layouts {
 		parsed, err := time.Parse(layout, element)
 		if err == nil {
@@ -357,7 +356,7 @@ func fromLayouts(element string) (out time.Time, parsedFrom DateParsedFrom, ok b
 	for _, layout := range localLayouts {
 		parsed, err := time.Parse(layout, element)
 		if err == nil {
-			return adjustBackToLocal(parsed), DateParsedFromLayout, true
+			return adjustBackToTimezone(parsed, timezone), DateParsedFromLayout, true
 		}
 	}
 
@@ -374,16 +373,47 @@ func fromUnixMilliseconds(value uint64) time.Time {
 	return time.Unix(int64(value)/1000, ns).UTC()
 }
 
-func adjustBackToLocal(in time.Time) time.Time {
+func adjustBackToTimezone(in time.Time, timezone *time.Location) time.Time {
 	if in.Year() == 0 {
 		in = in.AddDate(time.Now().Year(), 0, 0)
 	}
 
 	if in.Location() == time.UTC {
-		return in.Add(-1 * time.Duration(int64(localOffset)) * time.Second)
+		adjusted := in.In(timezone)
+
+		_, offset := adjusted.Zone()
+		if adjusted.IsDST() {
+			offset -= 3600
+		}
+
+		return adjusted.Add(-1 * time.Duration(int64(offset)) * time.Second)
 	}
 
 	return in
+}
+
+// ParseTimezone returns the timezone from the provided string. If the string is empty, it returns the local timezone.
+// If the string is "local", it returns the local timezone. If the string is "utc" or "z", it returns the UTC timezone.
+// Otherwise, it tries to load the timezone from the provided string.
+func ParseTimezone(value string) (*time.Location, error) {
+	if value == "" {
+		return time.Local, nil
+	}
+
+	if strings.ToLower(value) == "local" {
+		return time.Local, nil
+	}
+
+	if strings.ToLower(value) == "utc" || strings.ToLower(value) == "z" {
+		return time.UTC, nil
+	}
+
+	timezone, err := time.LoadLocation(value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid timezone %q: %w", value, err)
+	}
+
+	return timezone, nil
 }
 
 var layouts = []string{

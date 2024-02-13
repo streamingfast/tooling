@@ -25,7 +25,7 @@ func main() {
 var _, localOffset = time.Now().Zone()
 
 func toTimestamp(element string) (out string) {
-	parsed, _, ok := cli.ParseDateLikeInput(element, cli.DateLikeHintNone)
+	parsed, _, ok := cli.ParseDateLikeInput(element, cli.DateLikeHintNone, time.Local)
 	if !ok {
 		return fmt.Sprintf("Unable to interpret %q", element)
 	}

@@ -4,6 +4,8 @@ go 1.18
 
 require (
 	cloud.google.com/go/storage v1.31.0
+	github.com/btcsuite/btcutil v1.0.2
+	github.com/cosmos/btcutil v1.0.5
 	github.com/eoscanada/eos-go v0.9.0
 	github.com/mr-tron/base58 v1.2.0
 	github.com/spf13/cobra v1.1.3

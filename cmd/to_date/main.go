@@ -8,17 +8,20 @@ import (
 	"github.com/streamingfast/tooling/cli"
 )
 
-var asUnixSeconds = flag.Bool("s", false, "Avoid heuristics based to determine decimal range value and assume it's UNIX seconds since epoch")
-var asUnixMillis = flag.Bool("ms", false, "Avoid heuristics based to determine decimal range value and assume it's UNIX milliseconds since epoch")
+var asUnixSecondsFlag = flag.Bool("s", false, "Avoid heuristics based to determine decimal range value and assume it's UNIX seconds since epoch")
+var asUnixMillisFlag = flag.Bool("ms", false, "Avoid heuristics based to determine decimal range value and assume it's UNIX milliseconds since epoch")
+var timezoneFlag = flag.String("timezone", "local", "When the provided date is not timezone aware, use this timezone to interpret it. Valid values are 'local', 'utc', 'z' or a valid timezone name.")
 
 func main() {
 	flag.Parse()
 
 	count := 0
+	timezoneIfUnset, err := cli.ParseTimezone(*timezoneFlag)
+	cli.NoError(err, "invalid timezone provided")
 
 	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
-		fmt.Println(toDate(element))
+		fmt.Println(toDate(element, timezoneIfUnset))
 
 		count++
 	}
@@ -30,20 +33,20 @@ func main() {
 
 var _, localOffset = time.Now().Zone()
 
-func toDate(element string) (out string) {
+func toDate(element string, timezoneIfUnset *time.Location) (out string) {
 	hint := cli.DateLikeHintNone
 	switch {
-	case *asUnixMillis:
+	case *asUnixMillisFlag:
 		hint = cli.DateLikeHintUnixMilliseconds
-	case *asUnixSeconds:
+	case *asUnixSecondsFlag:
 		hint = cli.DateLikeHintUnixSeconds
 	}
 
-	if *asUnixSeconds {
+	if *asUnixSecondsFlag {
 		hint = cli.DateLikeHintUnixSeconds
 	}
 
-	parsed, _, ok := cli.ParseDateLikeInput(element, hint)
+	parsed, _, ok := cli.ParseDateLikeInput(element, hint, timezoneIfUnset)
 	if !ok {
 		return fmt.Sprintf("Unable to interpret %q", element)
 	}

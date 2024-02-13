@@ -102,7 +102,7 @@ func execute(interval time.Duration, args []string, out func(line string)) error
 }
 
 func toTimestamp(element string) time.Time {
-	parsed, _, ok := cli.ParseDateLikeInput(element, cli.DateLikeHintNone)
+	parsed, _, ok := cli.ParseDateLikeInput(element, cli.DateLikeHintNone, time.Local)
 	cli.Ensure(ok, "Unable to interpret %q as a timestamp input", element)
 
 	return parsed
