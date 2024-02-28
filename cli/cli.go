@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+var timeNow = time.Now
+
 const encodeStd = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 const encodeURL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
@@ -311,15 +313,13 @@ type DateLikeHint uint
 // )
 type DateParsedFrom uint
 
-var _, localOffset = time.Now().Zone()
-
 func ParseDateLikeInput(element string, hint DateLikeHint, timezoneIfUnset *time.Location) (out time.Time, parsedFrom DateParsedFrom, ok bool) {
 	if element == "" {
 		return out, 0, false
 	}
 
 	if element == "now" {
-		return time.Now(), DateParsedFromLayout, true
+		return timeNow(), DateParsedFromLayout, true
 	}
 
 	if DecRegexp.MatchString(element) {
@@ -349,7 +349,7 @@ func fromLayouts(element string, timezone *time.Location) (out time.Time, parsed
 	for _, layout := range layouts {
 		parsed, err := time.Parse(layout, element)
 		if err == nil {
-			return parsed, DateParsedFromLayout, true
+			return addMissingDateComponents(parsed), DateParsedFromLayout, true
 		}
 	}
 
@@ -363,6 +363,21 @@ func fromLayouts(element string, timezone *time.Location) (out time.Time, parsed
 	return
 }
 
+func addMissingDateComponents(in time.Time) time.Time {
+	if in.Year() == 0 && in.Month() == 1 && in.Day() == 1 {
+		now := timeNow()
+
+		return time.Date(now.Year(), now.Month(), now.Day(), in.Hour(), in.Minute(), in.Second(), in.Nanosecond(), in.Location())
+	}
+
+	if in.Year() == 0 {
+		in = in.AddDate(timeNow().Year(), 0, 0)
+		return in
+	}
+
+	return in
+}
+
 func fromUnixSeconds(value uint64) time.Time {
 	return time.Unix(int64(value), 0).UTC()
 }
@@ -374,9 +389,7 @@ func fromUnixMilliseconds(value uint64) time.Time {
 }
 
 func adjustBackToTimezone(in time.Time, timezone *time.Location) time.Time {
-	if in.Year() == 0 {
-		in = in.AddDate(time.Now().Year(), 0, 0)
-	}
+	in = addMissingDateComponents(in)
 
 	if in.Location() == time.UTC {
 		adjusted := in.In(timezone)
@@ -421,6 +434,7 @@ var layouts = []string{
 	time.RFC3339,
 	time.RFC3339Nano,
 	"2006-01-02T15:04:05.999999999-0700",
+	"2006-01-02 15:04:05.999999999 -0700 UTC",
 	time.UnixDate,
 	time.RFC850,
 	time.RubyDate,
@@ -439,6 +453,8 @@ var layouts = []string{
 
 	// Not sure where seen
 	"Mon Jan 02 15:04:05 2006 -0700",
+
+	"15:04 MST",
 }
 
 var localLayouts = []string{
