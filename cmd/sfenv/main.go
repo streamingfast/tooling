@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/streamingfast/cli"
@@ -134,6 +135,9 @@ func execute(cmd *cobra.Command, args []string) error {
 		}
 
 		putsEnvVar("API_TOKEN", token)
+		if err := expandTokenFeatures(token); err != nil {
+			return fmt.Errorf("expanding token features: %w", err)
+		}
 	}
 
 	if endpoint != "" {
@@ -151,6 +155,46 @@ func putsEnvVar(name, value string) {
 	}
 }
 
+func init() {
+	jwt.RegisterSigningMethod("KMSES256", func() jwt.SigningMethod {
+		return acceptAllSigningMethod{}
+	})
+}
+
+var _ jwt.SigningMethod = acceptAllSigningMethod{}
+
+type acceptAllSigningMethod struct {
+}
+
+func (a acceptAllSigningMethod) Alg() string { return "KMSES256" }
+func (a acceptAllSigningMethod) Sign(signingString string, key interface{}) ([]byte, error) {
+	panic("unimplemented")
+}
+func (a acceptAllSigningMethod) Verify(signingString string, sig []byte, key interface{}) error {
+	return nil
+}
+
+func expandTokenFeatures(token string) error {
+	claims := jwt.MapClaims{}
+	_, _, err := jwt.NewParser().ParseUnverified(token, claims)
+	if err != nil {
+		return fmt.Errorf("parsing JWT token: %w", err)
+	}
+
+	var features []string
+	for key, val := range claims {
+		if key == "cfg" {
+			for key, value := range val.(map[string]any) {
+				features = append(features, fmt.Sprintf("%s: %s", key, value.(string)))
+			}
+		}
+	}
+
+	putsEnvVar("API_FEATURES", strings.Join(features, ", "))
+
+	return nil
+}
+
 func getToken(apiKey *ApiKey, forceRefresh bool) (string, error) {
 	defaultJWTCache, err := DefaultJWTCacheLocation()
 	if err != nil {
@@ -159,10 +203,31 @@ func getToken(apiKey *ApiKey, forceRefresh bool) (string, error) {
 
 	var token *string
 	if !forceRefresh {
-		token, err = tokenRead(apiKey, defaultJWTCache)
+		tokenOnDisk, err := tokenRead(apiKey, defaultJWTCache)
 		if err != nil {
 			return "", fmt.Errorf("reading token: %w", err)
 		}
+
+		if tokenOnDisk != nil {
+			claims := jwt.MapClaims{}
+			_, _, err = jwt.NewParser().ParseUnverified(*tokenOnDisk, claims)
+			if err != nil {
+				return "", fmt.Errorf("parsing JWT token: %w", err)
+			}
+
+			value, err := claims.GetExpirationTime()
+			if err != nil {
+				return "", fmt.Errorf("retrieve expiration time")
+			}
+
+			token = tokenOnDisk
+			if value != nil && time.Now().After(value.Time) {
+				zlog.Debug("token is expired, forcing refresh")
+				token = nil
+			}
+		}
+	} else {
+		zlog.Debug("the JWT token was asked to be refreshed")
 	}
 
 	if token == nil {
