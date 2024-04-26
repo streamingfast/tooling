@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/streamingfast/cli"
@@ -151,32 +150,12 @@ var envPrefixes = []string{"SF", "DFUSE", "SUBSTREAMS", "STREAMINGFAST_FAST"}
 
 func putsEnvVar(name, value string) {
 	for _, prefix := range envPrefixes {
-		fmt.Printf("export %s_%s='%s'\n", prefix, strings.ToUpper(name), value)
+		fmt.Printf("export %s_%s=%s\n", prefix, strings.ToUpper(name), value)
 	}
 }
 
-func init() {
-	jwt.RegisterSigningMethod("KMSES256", func() jwt.SigningMethod {
-		return acceptAllSigningMethod{}
-	})
-}
-
-var _ jwt.SigningMethod = acceptAllSigningMethod{}
-
-type acceptAllSigningMethod struct {
-}
-
-func (a acceptAllSigningMethod) Alg() string { return "KMSES256" }
-func (a acceptAllSigningMethod) Sign(signingString string, key interface{}) ([]byte, error) {
-	panic("unimplemented")
-}
-func (a acceptAllSigningMethod) Verify(signingString string, sig []byte, key interface{}) error {
-	return nil
-}
-
 func expandTokenFeatures(token string) error {
-	claims := jwt.MapClaims{}
-	_, _, err := jwt.NewParser().ParseUnverified(token, claims)
+	claims, err := ParseJWTUnverified(token)
 	if err != nil {
 		return fmt.Errorf("parsing JWT token: %w", err)
 	}
@@ -185,7 +164,7 @@ func expandTokenFeatures(token string) error {
 	for key, val := range claims {
 		if key == "cfg" {
 			for key, value := range val.(map[string]any) {
-				features = append(features, fmt.Sprintf("%s: %s", key, value.(string)))
+				features = append(features, fmt.Sprintf("%s:%s", key, value.(string)))
 			}
 		}
 	}
@@ -209,8 +188,7 @@ func getToken(apiKey *ApiKey, forceRefresh bool) (string, error) {
 		}
 
 		if tokenOnDisk != nil {
-			claims := jwt.MapClaims{}
-			_, _, err = jwt.NewParser().ParseUnverified(*tokenOnDisk, claims)
+			claims, err := ParseJWTUnverified(*tokenOnDisk)
 			if err != nil {
 				return "", fmt.Errorf("parsing JWT token: %w", err)
 			}
