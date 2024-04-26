@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+teardown() {
+  for job in `jobs -p`; do
+    kill -s TERM $job &> /dev/null || true
+  done
+}
+
+main() {
+  if [[ $1 == "--help" || $1 == "-h" ]]; then
+    usage
+    exit
+  fi
+
+  trap teardown EXIT
+  pushd "$ROOT" &> /dev/null
+
+  namespace=""
+
+  while getopts "n:" opt; do
+    case $opt in
+        n) namespace="$OPTARG";;
+        \?) echo "ERROR: Invalid option: -$OPTARG\n"; usage; exit;;
+    esac
+  done
+  shift $((OPTIND-1))
+
+  kc="kubectl"
+  if [[ $namespace != "" ]]; then
+    kc+=" -n $namespace"
+  fi
+
+  for service in "${@}"; do
+    name=$(echo $service | cut -f1 -d':')
+    listen_port=$(echo $service | cut -f2 -d':')
+    to_port=$(echo $service | cut -f3 -d':')
+    if [[ $to_port == "" ]]; then
+      to_port=$listen_port
+    fi
+
+    if [[ ! $(printf $name | grep -E "[a-z_-]+/.*") ]]; then
+      # Not starting type, add `svc/` to name
+      name="svc/$name"
+    fi
+
+    echo "Forwarding $name (listening on $listen_port, forwarding to $to_port)"
+    $kc port-forward $name $listen_port:$to_port 1> /dev/null &
+  done
+
+  echo ""
+  echo "Press Ctrl+C to terminal all port forwarding"
+  for job in `jobs -p`; do
+    wait $job || true
+  done
+}
+
+usage() {
+  echo "usage: port_forward [-n <namespace>] <service> ..."
+  echo ""
+  echo "For development purposes, start port-forwarding of all services known"
+  echo "by this script on a series of ports, 7001, 7002, ..."
+  echo ""
+  echo "By default, these services are port forwarded:"
+
+  for service in "${@}"; do
+    echo "- ${service}"
+  done
+}
+
+main $@
