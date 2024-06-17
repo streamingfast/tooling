@@ -84,7 +84,8 @@ func toHex(element string) string {
 		return base64valueToHex(element, base64.RawURLEncoding)
 	}
 
-	if *asBech32Flag != "" {
+	if cli.IsFlagSet("bech32") {
+		cli.Ensure(*asBech32Flag != "", "Flag -bech32 requires a value to be provided like '-bech32=hrp' where 'hrp' is the human readable part of the bech32 value")
 		return bech32ValueToHex(element, *asBech32Flag)
 	}
 

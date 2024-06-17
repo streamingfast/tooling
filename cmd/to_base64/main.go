@@ -57,7 +57,8 @@ func toBase64(element string) string {
 		return base58valueToBase64(element)
 	}
 
-	if *asBech32Flag != "" {
+	if cli.IsFlagSet("bech32") {
+		cli.Ensure(*asBech32Flag != "", "Flag -bech32 requires a value to be provided like '-bech32=hrp' where 'hrp' is the human readable part of the bech32 value")
 		return bech32ValueToBase64(element, *asBech32Flag)
 	}
 

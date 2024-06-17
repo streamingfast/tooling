@@ -51,6 +51,20 @@ func End(message string, args ...interface{}) {
 	os.Exit(0)
 }
 
+// IsFlagSet checks if a flag is set in the [flag] package
+// by using [flag.Visit] to walk over *set* flags and return
+// true if one of them matches the provided flag name.
+func IsFlagSet(flagName string) bool {
+	isSet := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == flagName {
+			isSet = true
+		}
+	})
+
+	return isSet
+}
+
 func EncodeHex(in []byte) string {
 	hex := hex.EncodeToString(in)
 	if len(hex) == 0 {
