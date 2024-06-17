@@ -126,7 +126,7 @@ func execute(cmd *cobra.Command, args []string) error {
 	}
 
 	if apiKey != nil {
-		putsEnvVar("API_KEY=", apiKey.Key)
+		putsEnvVar("API_KEY", apiKey.Key)
 
 		token, err := getToken(apiKey, sflags.MustGetBool(cmd, "refresh"))
 		if err != nil {
@@ -146,7 +146,7 @@ func execute(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var envPrefixes = []string{"SF", "DFUSE", "SUBSTREAMS", "STREAMINGFAST_FAST"}
+var envPrefixes = []string{"SF", "DFUSE", "FIREHOSE", "SUBSTREAMS", "STREAMINGFAST_FAST"}
 
 func putsEnvVar(name, value string) {
 	for _, prefix := range envPrefixes {
