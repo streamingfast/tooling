@@ -55,6 +55,11 @@ func Test_ParseDateLikeInput(t *testing.T) {
 			"2024-02-28 14:52:41.388325098 +0000 UTC",
 			want{dateIn(t, "2024-02-28 14:52:41.388325098Z", weirdEmptyLocation), DateParsedFromLayout, true},
 		},
+		{
+			// Found `zap-pretty` output
+			"2024-07-23 14:37:10.304 EDT",
+			want{date(t, "2024-07-23 14:37:10.304-04:00"), DateParsedFromLayout, true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.element, func(t *testing.T) {

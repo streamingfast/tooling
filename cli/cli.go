@@ -468,6 +468,9 @@ var layouts = []string{
 	// Not sure where seen
 	"Mon Jan 02 15:04:05 2006 -0700",
 
+	// Found in `zap-pretty` output
+	"2006-01-02 15:04:05.999999999 MST",
+
 	"15:04 MST",
 }
 
