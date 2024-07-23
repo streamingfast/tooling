@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -50,6 +52,7 @@ func (c *Config) SearchNetwork(input string) *Network {
 }
 
 type ApiKey struct {
+	// Name of the API key, empty string if the key was provided literally from a config
 	Name string
 	Key  string
 }
@@ -117,13 +120,21 @@ func LoadConfig(file string) (*Config, error) {
 
 		apiKey := config.DefaultApiKey
 		if networkConfig.ApiKey != nil {
-			apiKeyReference := strings.TrimPrefix(*networkConfig.ApiKey, "@")
-			key, found := config.ApiKeysByName[apiKeyReference]
-			if !found {
-				return nil, fmt.Errorf("unable to find api key %q for network %q, valid api key names are [%q]", apiKeyReference, networkName, config.JoinedApiKeyNames(", "))
-			}
+			if strings.HasPrefix(*networkConfig.ApiKey, "@") {
+				apiKeyReference := strings.TrimPrefix(*networkConfig.ApiKey, "@")
+				key, found := config.ApiKeysByName[apiKeyReference]
+				if !found {
+					return nil, fmt.Errorf("unable to find api key %q for network %q, valid api key names are [%q]", apiKeyReference, networkName, config.JoinedApiKeyNames(", "))
+				}
 
-			apiKey = key
+				apiKey = key
+			} else {
+				keySum := sha256.Sum256([]byte(*networkConfig.ApiKey))
+				keyHash := base64.StdEncoding.EncodeToString(keySum[:])
+
+				// Left as-is, it's an api key directly, use a unique name to avoid conflicts on caching
+				apiKey = &ApiKey{Key: *networkConfig.ApiKey, Name: networkName + "-unamed-" + keyHash}
+			}
 		}
 
 		network := &Network{Name: networkName, ApiKey: apiKey, Aliases: networkConfig.Aliases}

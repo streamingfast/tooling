@@ -35,18 +35,18 @@ func main() {
 
 			apiKeys:
 			  primary: server_key1
-			  paymentGateway: server_key2
 			  default: "@primary"
 			networks:
 			  'default':
 			    endpoint: mainnet.eth.streamingfast.io:443
 			  'eth-mainnet':
 			    endpoint: mainnet.eth.streamingfast.io:443
+			    apiKey: @primary
 			    alias:
 			    - mainnet
 			  'payment-gateway':
 			    endpoint: payment.gateway.streamingfast.io:443
-			    apiKey: "paymentGateway"
+			    apiKey: server_key2
 			    alias:
 			    - pg
 
@@ -63,7 +63,7 @@ func main() {
 
 			You get variations with SUBSTREAMS_, DFUSE_ and STREAMINGFAST_FAST_ prefixes too (instead of 'SF_').
 
-			JWT token are cached to disk in ~/.cache/sfenv/jwt-cache/ and refreshed only if expired or if --refresh (-r) flag is passed:
+			JWT token are cached to disk in ~/.config/sfenv/jwt-cache/ and refreshed only if expired or if --refresh (-r) flag is passed:
 
 			$(sfenv -r eth-sepolia)
 			# Force JWT refresh, useful if you need new features set on your key
