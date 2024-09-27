@@ -15,6 +15,7 @@ import (
 var asBinaryFlag = flag.Bool("in", false, "Decode the standard input as a binary representation")
 var asBase58Flag = flag.Bool("b58", false, "Decode the input as a base58 representation")
 var asBase64Flag = flag.Bool("b64", false, "Decode the input as a base64 representation")
+var asBase64URLFlag = flag.Bool("b64u", false, "Decode the input as URL base64 representation")
 
 func main() {
 	flag.Parse()
@@ -48,6 +49,12 @@ func toAscii(element string) string {
 		cli.NoError(err, "unable to decode %q as base64", element)
 
 		return bytesToAscii(base64Bytes)
+	}
+
+	if *asBase64URLFlag {
+		out, err := base64.RawURLEncoding.DecodeString(element)
+		cli.NoError(err, "unable to decode %q as base64 URL", element)
+		return bytesToAscii(out)
 	}
 
 	if cli.HexRegexp.MatchString(element) {

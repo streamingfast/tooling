@@ -5,8 +5,8 @@ go 1.22
 require (
 	cloud.google.com/go/storage v1.31.0
 	github.com/btcsuite/btcutil v1.0.2
-	github.com/cosmos/btcutil v1.0.5
 	github.com/eoscanada/eos-go v0.9.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/mr-tron/base58 v1.2.0
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
@@ -23,7 +23,6 @@ require (
 require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	github.com/bobg/go-generics/v2 v2.1.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230530153820-e85fd2cbaebc // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230530153820-e85fd2cbaebc // indirect
