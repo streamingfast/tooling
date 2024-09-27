@@ -59,7 +59,7 @@ func toBase58(element string) string {
 	}
 
 	if *asBase64URLFlag {
-		return base64valueToBase58(element, base64.RawURLEncoding)
+		return base64valueToBase58(element, base64.URLEncoding)
 	}
 
 	if cli.IsFlagSet("bech32") {

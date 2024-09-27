@@ -52,7 +52,7 @@ func toAscii(element string) string {
 	}
 
 	if *asBase64URLFlag {
-		out, err := base64.RawURLEncoding.DecodeString(element)
+		out, err := base64.URLEncoding.DecodeString(element)
 		cli.NoError(err, "unable to decode %q as base64 URL", element)
 		return bytesToAscii(out)
 	}
