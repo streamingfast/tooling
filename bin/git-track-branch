@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+option=""
+
+main() {
+  while getopts "h" opt; do
+    case $opt in
+      h) usage && exit 0;;
+      \?) usage_error "Invalid option: -$OPTARG";;
+    esac
+  done
+  shift $((OPTIND-1))
+
+  remote="${1:-origin}"
+  branch="${2:-$(git rev-parse --abbrev-ref HEAD)}"
+
+  git branch --set-upstream-to="${remote}/${branch}" "${branch}"
+}
+
+usage_error() {
+  message="$1"
+  exit_code="$2"
+
+  echo "ERROR: $message"
+  echo ""
+  usage
+  exit ${exit_code:-1}
+}
+
+usage() {
+  echo "usage: git track-branch [<remote>] [<branch>]"
+  echo ""
+  echo "Perform's branch set-upstream to link your local branch"
+  echo "to remote branch so that 'git pull' knowns how to work."
+  echo ""
+  echo "By default, it calls:"
+  echo ""
+  echo "  git branch --set-upstream-to=origin/<current_branch> <current_branch>"
+  echo ""
+  echo "Origin is replaced with <remote> if provided and <current_branch>"
+  echo "is replaced with <branch> if provided."
+  echo ""
+  echo "Options"
+  echo "    -h          Display help about this script"
+}
+
+main "$@"
