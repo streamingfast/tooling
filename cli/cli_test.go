@@ -60,6 +60,11 @@ func Test_ParseDateLikeInput(t *testing.T) {
 			"2024-07-23 14:37:10.304 EDT",
 			want{date(t, "2024-07-23 14:37:10.304-04:00"), DateParsedFromLayout, true},
 		},
+		{
+			// Found in some Telegram date reporting
+			"2024-08-08 21:00:00UTC",
+			want{date(t, "2024-08-08 21:00:00Z"), DateParsedFromLayout, true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.element, func(t *testing.T) {

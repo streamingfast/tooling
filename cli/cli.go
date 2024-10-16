@@ -471,6 +471,9 @@ var layouts = []string{
 	// Found in `zap-pretty` output
 	"2006-01-02 15:04:05.999999999 MST",
 
+	// Found in some Telegram data reporting
+	"2006-01-02 15:04:05UTC",
+
 	"15:04 MST",
 }
 
