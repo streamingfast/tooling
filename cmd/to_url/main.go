@@ -61,8 +61,6 @@ func execute(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func
-
 func toUrl(element string, forcedDecode, forcedEncode bool) string {
 	if element == "" {
 		return ""
