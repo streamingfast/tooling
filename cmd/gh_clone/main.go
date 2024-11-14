@@ -46,6 +46,8 @@ func main() {
 			# Executes 'git clone git@github.com:acme/example.git' into 'acme-example'
 			gh_clone git@github.com:acme/example.git
 		`),
+
+		OnCommandErrorLogAndExit(zlog),
 	)
 }
 
@@ -71,6 +73,8 @@ func runGitClone(ctx context.Context, input ResolvedInput) {
 	}
 
 	zlog.Debug("completed git clone command", zap.Stringer("cmd", cmd))
+
+	fmt.Printf("Cloned into ./%s\n", input.Organization+"-"+input.Repository)
 }
 
 func printlnError(message string, args ...interface{}) {
