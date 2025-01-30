@@ -1,6 +1,8 @@
 module github.com/streamingfast/tooling
 
-go 1.22
+go 1.22.0
+
+toolchain go1.23.0
 
 require (
 	cloud.google.com/go/storage v1.31.0
@@ -15,7 +17,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.21.0
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
-	golang.org/x/mod v0.8.0
+	golang.org/x/mod v0.22.0
 	google.golang.org/api v0.126.0
 	gopkg.in/yaml.v3 v3.0.1
 )

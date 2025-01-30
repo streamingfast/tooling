@@ -20,6 +20,16 @@ import (
 var HookVerify = Command(hookVerify,
 	"verify",
 	"Verify hook received data to ensure that you do not push a local replacement (normally called by Git directly)",
+	Description(`
+		This command is normally called by Git directly when a push is performed. It will verify that the push does not
+		contain any local replacement in the go.mod file.
+
+		Git invokes it on push with the following arguments:
+		- remote name
+		- remote URL
+		- stdin with the following format:
+			<local_ref> <local_oid> <remote_ref> <remote_oid>
+	`),
 )
 
 var zeroHash = "0000000000000000000000000000000000000000"
@@ -185,8 +195,10 @@ func reportLocalReplacementFound(moduleFilePath string, foundElement string) {
 	workingDirectory, err := os.Getwd()
 	cli.NoError(err, "unable to get working directory")
 
-	relativePath, err := filepath.Rel(workingDirectory, moduleFilePath)
-	cli.NoError(err, "unable to make module path %q relative to %q", moduleFilePath, workingDirectory)
+	path := moduleFilePath
+	if relativePath, err := filepath.Rel(workingDirectory, moduleFilePath); err == nil {
+		path = relativePath
+	}
 
-	printlnError("The %s file has a local replacement %q, remove it prior pushing to remote repository", relativePath, foundElement)
+	printlnError("The %s file has a local replacement %q, remove it prior pushing to remote repository", path, foundElement)
 }
