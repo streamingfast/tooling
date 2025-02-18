@@ -16,8 +16,12 @@ func main() {
 	flag.Parse()
 
 	count := 0
-	timezoneIfUnset, err := cli.ParseTimezone(*timezoneFlag)
-	cli.NoError(err, "invalid timezone provided")
+	timezoneIfUnset := time.Local
+	if *timezoneFlag != "" {
+		var err error
+		timezoneIfUnset, err = cli.ParseTimezone(*timezoneFlag)
+		cli.NoError(err, "invalid timezone provided")
+	}
 
 	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
@@ -34,6 +38,11 @@ func main() {
 var _, localOffset = time.Now().Zone()
 
 func toDate(element string, timezoneIfUnset *time.Location) (out string) {
+	if location, found := cli.GetTimeZoneAbbreviationLocation(element); found {
+		// There is just a location, gives the current time in that location
+		return formatDateAt(time.Now().In(location))
+	}
+
 	hint := cli.DateLikeHintNone
 	switch {
 	case *asUnixMillisFlag:
@@ -56,4 +65,8 @@ func toDate(element string, timezoneIfUnset *time.Location) (out string) {
 
 func formatDate(in time.Time) string {
 	return fmt.Sprintf("%s (%s)", in.Local().Format(time.RFC3339), in.UTC().Format(time.RFC3339))
+}
+
+func formatDateAt(in time.Time) string {
+	return fmt.Sprintf("%s (%s)", in.Format(time.RFC3339), in.UTC().Format(time.RFC3339))
 }

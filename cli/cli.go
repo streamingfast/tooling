@@ -18,9 +18,6 @@ import (
 
 var timeNow = time.Now
 
-const encodeStd = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-const encodeURL = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-
 var Base64URLRegexp = regexp.MustCompile(`^[a-zA-z0-9\-_]+(=){0,2}$`)
 var Base64StdRegexp = regexp.MustCompile(`^[a-zA-z0-9\+\/]+(=){0,2}$`)
 var DecRegexp = regexp.MustCompile(`^[0-9]+$`)
@@ -363,6 +360,25 @@ func fromLayouts(element string, timezone *time.Location) (out time.Time, parsed
 	for _, layout := range layouts {
 		parsed, err := time.Parse(layout, element)
 		if err == nil {
+			// Fixe the timezone if it's offset is 0 which happens when using time
+			// zone abbreviations like "CET" which are not recognized by Go. Those are ambiguous,
+			// so they cannot be relied on to be parsed correctly in all cases, specific offset
+			// should be used instead.
+			name, offset := parsed.Zone()
+			if offset == 0 {
+				// Reload the location, unsure what Golang does when dealing with ambiguous
+				// timezone abbreviations like MST (Mountain Standard Time or Malaysian Standard Time).
+				// Our rules would be to use the closest timezone from America.
+				location, err := ParseTimezone(name)
+				if err != nil {
+					// Panic for now, so I get aware of cases we would need to handle differently
+					panic(fmt.Errorf("unable to load location %q: %w", name, err))
+				}
+
+				// Reload the time with the correct location
+				parsed = time.Date(parsed.Year(), parsed.Month(), parsed.Day(), parsed.Hour(), parsed.Minute(), parsed.Second(), parsed.Nanosecond(), location)
+			}
+
 			return addMissingDateComponents(parsed), DateParsedFromLayout, true
 		}
 	}
@@ -424,7 +440,7 @@ func adjustBackToTimezone(in time.Time, timezone *time.Location) time.Time {
 // Otherwise, it tries to load the timezone from the provided string.
 func ParseTimezone(value string) (*time.Location, error) {
 	if value == "" {
-		return time.Local, nil
+		return time.UTC, nil
 	}
 
 	if strings.ToLower(value) == "local" {
@@ -435,12 +451,17 @@ func ParseTimezone(value string) (*time.Location, error) {
 		return time.UTC, nil
 	}
 
-	timezone, err := time.LoadLocation(value)
+	location, err := time.LoadLocation(value)
 	if err != nil {
+		// Check if it's a location abbreviation we know about
+		if location, found := GetTimeZoneAbbreviationLocation(value); found {
+			return location, nil
+		}
+
 		return nil, fmt.Errorf("invalid timezone %q: %w", value, err)
 	}
 
-	return timezone, nil
+	return location, nil
 }
 
 var layouts = []string{
@@ -449,6 +470,8 @@ var layouts = []string{
 	time.RFC3339Nano,
 	"2006-01-02T15:04:05.999999999-0700",
 	"2006-01-02 15:04:05.999999999 -0700 UTC",
+	"2006-01-02T15:04:05 MST",
+	"2006-01-02T15:04:05.999999999 MST",
 	time.UnixDate,
 	time.RFC850,
 	time.RubyDate,
