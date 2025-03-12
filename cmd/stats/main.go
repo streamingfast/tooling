@@ -4,8 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"regexp"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/streamingfast/tooling/cli"
 )
@@ -21,8 +23,16 @@ func main() {
 	var distribution []float64
 
 	scanner := cli.NewFlagArgumentScanner()
+	currentValueKind := (*ValueKind)(nil)
+
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
-		value := parse(element)
+		value, valueKind := parse(element, currentValueKind)
+		if currentValueKind == nil {
+			currentValueKind = &valueKind
+		} else if *currentValueKind != valueKind {
+			cli.Quit("All arguments should be of the same kind, %s and %s are not", *currentValueKind, valueKind)
+		}
+
 		distribution = append(distribution, value)
 
 		elementCount++
@@ -43,19 +53,52 @@ func main() {
 
 	sort.Float64Slice(distribution).Sort()
 
-	fmt.Printf("Count: %d\n", count(elementCount))
-	fmt.Printf("Range: Min %s - Max %s\n", float(*min), float(*max))
-	fmt.Printf("Sum: %s\n", float(sum))
-	fmt.Printf("Average: %s\n", float(sum/float64(elementCount)))
-	fmt.Printf("Median: %s\n", float(median(distribution)))
-	fmt.Printf("Standard Deviation: %s\n", float(standardDeviation(sum/float64(elementCount), distribution)))
+	if currentValueKind != nil && *currentValueKind == ValueKindDuration {
+		*unit = ""
+
+		fmt.Printf("Count: %d\n", count(elementCount))
+		fmt.Printf("Range: Min %s - Max %s\n", duration(*min), duration(*max))
+		fmt.Printf("Sum: %s\n", duration(sum))
+		fmt.Printf("Average: %s\n", duration(sum/float64(elementCount)))
+		fmt.Printf("Median: %s\n", duration(median(distribution)))
+		fmt.Printf("Standard Deviation: %s\n", duration(standardDeviation(sum/float64(elementCount), distribution)))
+
+	} else {
+		fmt.Printf("Count: %d\n", count(elementCount))
+		fmt.Printf("Range: Min %s - Max %s\n", float(*min), float(*max))
+		fmt.Printf("Sum: %s\n", float(sum))
+		fmt.Printf("Average: %s\n", float(sum/float64(elementCount)))
+		fmt.Printf("Median: %s\n", float(median(distribution)))
+		fmt.Printf("Standard Deviation: %s\n", float(standardDeviation(sum/float64(elementCount), distribution)))
+	}
 }
 
-func parse(element string) float64 {
+var durationRegex = regexp.MustCompile(`\s*(ns|us|ms|s|m|h)\s*$`)
+var spacesRegex = regexp.MustCompile(`\s+`)
+
+//go:generate go-enum -f=$GOFILE --marshal --names
+
+// ENUM(
+//
+//	Duration
+//	Number
+//
+// )
+type ValueKind uint
+
+func parse(element string, previousKind *ValueKind) (value float64, kind ValueKind) {
+	if durationRegex.MatchString(element) {
+		// We have a duration like, let's treat is as such
+		duration, err := time.ParseDuration(spacesRegex.ReplaceAllLiteralString(element, ""))
+		cli.NoError(err, "Couldn't parse duration like argument %q", element)
+
+		return float64(duration), ValueKindDuration
+	}
+
 	value, err := strconv.ParseFloat(element, 64)
 	cli.NoError(err, "all arguments should be a number, %q wasn't", element)
 
-	return value
+	return value, ValueKindNumber
 }
 
 func median(distribution []float64) float64 {
@@ -85,7 +128,7 @@ func standardDeviation(mean float64, distribution []float64) float64 {
 type count uint64
 
 func (c count) String() string {
-	value := strconv.FormatUint(uint64(c), 64)
+	value := strconv.FormatUint(uint64(c), 10)
 	if *unit == "" {
 		return value
 	}
@@ -102,4 +145,10 @@ func (f float) String() string {
 	}
 
 	return value + *unit
+}
+
+type duration float64
+
+func (f duration) String() string {
+	return time.Duration(f).String()
 }
