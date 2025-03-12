@@ -35,8 +35,6 @@ func main() {
 	}
 }
 
-var _, localOffset = time.Now().Zone()
-
 func toDate(element string, timezoneIfUnset *time.Location) (out string) {
 	if location, found := cli.GetTimeZoneAbbreviationLocation(element); found {
 		// There is just a location, gives the current time in that location

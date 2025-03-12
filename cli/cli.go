@@ -491,6 +491,12 @@ var layouts = []string{
 	// Not sure where seen
 	"Mon Jan 02 15:04:05 2006 -0700",
 
+	// Seen in go-ethereum release notes
+	"Mon, Jan 02 at 15:04:05 UTC",
+
+	// Seen in Lighthouse release notes
+	"Mon 02 Jan 2006 15:04:05 UTC",
+
 	// Found in `zap-pretty` output
 	"2006-01-02 15:04:05.999999999 MST",
 

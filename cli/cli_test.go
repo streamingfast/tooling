@@ -75,6 +75,16 @@ func Test_ParseDateLikeInput(t *testing.T) {
 			"2025-02-05T15:00:00 IST",
 			want{dateAtLocation(t, "2025-02-05 15:00:00", dublinLocation), DateParsedFromLayout, true},
 		},
+		{
+			// Found in go-ethereum release notes
+			"Mon, Feb 24 at 21:55:12 UTC",
+			want{dateAtLocation(t, "2024-02-24 21:55:12", time.UTC), DateParsedFromLayout, true},
+		},
+		{
+			// Found in Lighthouse release notes
+			"Mon 24 Feb 2025 21:55:12 UTC",
+			want{dateAtLocation(t, "2025-02-24 21:55:12", time.UTC), DateParsedFromLayout, true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.element, func(t *testing.T) {
