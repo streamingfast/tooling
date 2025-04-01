@@ -503,7 +503,13 @@ var layouts = []string{
 	// Found in some Telegram data reporting
 	"2006-01-02 15:04:05UTC",
 
+	// Found in BNB releases
+	"2006-01-02 15:04:05 PM UTC",
+
 	"15:04 MST",
+
+	// Found on Sei releases notes
+	"2006-01-02 15:04:05 UTC",
 }
 
 var localLayouts = []string{

@@ -85,6 +85,16 @@ func Test_ParseDateLikeInput(t *testing.T) {
 			"Mon 24 Feb 2025 21:55:12 UTC",
 			want{dateAtLocation(t, "2025-02-24 21:55:12", time.UTC), DateParsedFromLayout, true},
 		},
+		{
+			// Found in BNB releases
+			"2025-03-20 02:10:00 AM UTC",
+			want{dateAtLocation(t, "2025-03-20 02:10:00", time.UTC), DateParsedFromLayout, true},
+		},
+		{
+			// Found in Sei releases
+			"2025-04-02 16:00:00 UTC",
+			want{dateAtLocation(t, "2025-04-02 16:00:00", time.UTC), DateParsedFromLayout, true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.element, func(t *testing.T) {
