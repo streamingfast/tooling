@@ -3,16 +3,20 @@ package main
 import (
 	"flag"
 	"fmt"
-	"strconv"
+	"math/big"
+	"strings"
 
 	"github.com/streamingfast/tooling/cli"
 )
 
-var asBinary = flag.Bool("b", false, "Use IEC base 2 representation for bytes, i.e. KB = 1024, MB = 1024^2, etc.")
+var asBinary = flag.Bool("b", false, "Use IEC base 2 representation for bytes, i.e. KiB = 1024, MiB = 1024^2, etc.")
 var asInternational = flag.Bool("si", false, "Use International System of Units (SI) base 10 representation for bytes, i.e. KB = 1000, MB = 1000^2, etc.")
+var compact = flag.Bool("c", false, "Compact output giving only one of -b or -si, depending on which one is used.")
 
 func main() {
 	flag.Parse()
+
+	cli.Ensure(!(*asBinary && *asInternational), "You cannot use both -b and -si flags at the same time")
 
 	scanner := cli.NewFlagArgumentScanner()
 	for element, ok := scanner.ScanArgument(); ok; element, ok = scanner.ScanArgument() {
@@ -21,17 +25,16 @@ func main() {
 }
 
 func humanize(element string) string {
-
 	if cli.DecRegexp.MatchString(element) {
-		value, err := strconv.ParseInt(element, 10, 64)
-		cli.NoError(err, "invalid dec value %q", element)
+		value, ok := new(big.Int).SetString(element, 10)
+		cli.Ensure(ok, "invalid decimal value %q", element)
 
 		return humanizeBytes(value)
 	}
 
 	if cli.HexRegexp.MatchString(element) {
-		value, err := strconv.ParseInt(element, 16, 64)
-		cli.NoError(err, "invalid hex value %q", element)
+		value, ok := new(big.Int).SetString(strings.TrimPrefix(strings.ToLower(element), "0x"), 16)
+		cli.Ensure(ok, "invalid hex value %q", element)
 
 		return humanizeBytes(value)
 	}
@@ -39,14 +42,24 @@ func humanize(element string) string {
 	return element
 }
 
-func humanizeBytes(value int64) string {
-	metricSystem := base10MetricSystem
-	if *asBinary {
-		metricSystem = base2MetricSystem
+func humanizeBytes(value *big.Int) string {
+	inInternational := formatBiggestValue(value, base10MetricSystem)
+	inBinary := formatBiggestValue(value, base2MetricSystem)
+
+	if *compact {
+		if *asInternational {
+			return inInternational
+		}
+
+		return inBinary
 	}
 
+	return fmt.Sprintf("%s (%s)", inBinary, inInternational)
+}
+
+func formatBiggestValue(value *big.Int, metricSystem []metricSystemEntry) string {
 	for _, entry := range metricSystem {
-		if value >= entry.InBytes {
+		if value.Cmp(entry.InBytes) >= 0 {
 			return format(value, entry)
 		}
 	}
@@ -54,41 +67,30 @@ func humanizeBytes(value int64) string {
 	return format(value, metricSystem[len(metricSystem)-1])
 }
 
-func format(value int64, entry metricSystemEntry) string {
-	converted := float64(value) / float64(entry.InBytes)
-
-	return fmt.Sprintf("%.2f %s", converted, entry.Unit)
+func format(value *big.Int, entry metricSystemEntry) string {
+	converted := new(big.Rat).SetFrac(value, entry.InBytes)
+	return fmt.Sprintf("%s %s", converted.FloatString(2), entry.Unit)
 }
 
 var base10MetricSystem = []metricSystemEntry{
-	{Unit: "TB", InBytes: 1000 * 1000 * 1000 * 1000},
-	{Unit: "GB", InBytes: 1000 * 1000 * 1000},
-	{Unit: "MB", InBytes: 1000 * 1000},
-	{Unit: "KB", InBytes: 1000},
-	{Unit: "bytes", InBytes: 1},
+	{Unit: "PB", InBytes: big.NewInt(1000 * 1000 * 1000 * 1000 * 1000)},
+	{Unit: "TB", InBytes: big.NewInt(1000 * 1000 * 1000 * 1000)},
+	{Unit: "GB", InBytes: big.NewInt(1000 * 1000 * 1000)},
+	{Unit: "MB", InBytes: big.NewInt(1000 * 1000)},
+	{Unit: "KB", InBytes: big.NewInt(1000)},
+	{Unit: "bytes", InBytes: big.NewInt(1)},
 }
 
 var base2MetricSystem = []metricSystemEntry{
-	{Unit: "TiB", InBytes: 1024 * 1024 * 1024 * 1024},
-	{Unit: "GiB", InBytes: 1024 * 1024 * 1024},
-	{Unit: "MiB", InBytes: 1024 * 1024},
-	{Unit: "KiB", InBytes: 1024},
-	{Unit: "bytes", InBytes: 1},
+	{Unit: "PiB", InBytes: big.NewInt(1024 * 1024 * 1024 * 1024 * 1024)},
+	{Unit: "TiB", InBytes: big.NewInt(1024 * 1024 * 1024 * 1024)},
+	{Unit: "GiB", InBytes: big.NewInt(1024 * 1024 * 1024)},
+	{Unit: "MiB", InBytes: big.NewInt(1024 * 1024)},
+	{Unit: "KiB", InBytes: big.NewInt(1024)},
+	{Unit: "bytes", InBytes: big.NewInt(1)},
 }
 
 type metricSystemEntry struct {
 	Unit    string
-	InBytes int64
+	InBytes *big.Int
 }
-
-//go:generate go-enum -f=$GOFILE --marshal --names
-
-//
-// ENUM(
-//   Byte
-//   KiloByte
-//   MegaByte
-//   GigaByte
-//   TeraByte
-// )
-type Size uint
