@@ -11,17 +11,19 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/streamingfast/cli"
 	. "github.com/streamingfast/cli"
+	"github.com/streamingfast/cli/sflags"
 	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
 )
 
-var zlog, tracer = logging.ApplicationLogger("go_replace", "github.com/streamingfast/tooling/cmd/go_replace")
+var zlog, _ = logging.ApplicationLogger("go_replace", "github.com/streamingfast/tooling/cmd/go_replace")
 
 func main() {
 	Run("go_replace <id>",
-		"Replace the dependency id(s) provided on the currently dectected Golang module by it's local counterpart.",
+		"Replace the dependency id(s) provided on the currently detected Golang module by it's local counterpart.",
 		ExactArgs(1),
 		Flags(func(flags *pflag.FlagSet) {
+			flags.BoolP("bump", "b", false, "Bump, using go_bump, the dependency to the latest one on drop")
 			flags.BoolP("drop", "d", false, "Drop the replace statement from go.mod file")
 		}),
 		Description(`
@@ -77,8 +79,12 @@ func main() {
 }
 
 func run(cmd *cobra.Command, args []string) error {
-	drop, err := cmd.Flags().GetBool("drop")
-	cli.NoError(err, "get bool flag")
+	bump := sflags.MustGetBool(cmd, "bump")
+	drop := sflags.MustGetBool(cmd, "drop")
+
+	if bump && !drop {
+		return fmt.Errorf("--bump can only be used with --drop")
+	}
 
 	userHome, err := os.UserHomeDir()
 	if err != nil {
@@ -96,12 +102,12 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("replacement resolution: %w", err)
 	}
 
-	edit(cmd.Context(), replacement, drop)
+	editDependency(cmd.Context(), args[0], replacement, drop, bump)
 
 	return nil
 }
 
-func edit(ctx context.Context, replacement Replacement, drop bool) {
+func editDependency(ctx context.Context, input string, replacement Replacement, drop bool, bump bool) {
 	cmd := exec.CommandContext(ctx, "go", "mod", "edit", "-replace", fmt.Sprintf("%s=%s", replacement.From, replacement.To))
 	if drop {
 		cmd = exec.CommandContext(ctx, "go", "mod", "edit", "-dropreplace", replacement.From)
@@ -120,7 +126,25 @@ func edit(ctx context.Context, replacement Replacement, drop bool) {
 		os.Exit(1)
 	}
 
+	if bump {
+		bumpDependency(ctx, input)
+	}
+
 	zlog.Debug("completed replacement", zap.Bool("drop", drop), zap.String("from", replacement.From), zap.String("to", replacement.From))
+}
+
+func bumpDependency(ctx context.Context, input string) {
+	zlog.Debug("bumping dependency", zap.String("input", input))
+
+	cmd := exec.CommandContext(ctx, "go_bump", input)
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		printlnError("Failed to bump %q (command %q)", input, cmd)
+
+		os.Stderr.Write(output)
+		os.Exit(1)
+	}
 }
 
 func printlnInfo(message string, args ...interface{}) {
