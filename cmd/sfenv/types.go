@@ -58,10 +58,24 @@ type ApiKey struct {
 }
 
 type Network struct {
-	Name     string
-	Endpoint string
-	Aliases  []string
-	ApiKey   *ApiKey
+	Name             string
+	Endpoint         string
+	Aliases          []string
+	ApiKey           *ApiKey
+	JWTIssuerBaseURL string
+}
+
+func (n *Network) fromConfig(config *networkConfigDef) *Network {
+	if config.Endpoint != nil {
+		n.Endpoint = *config.Endpoint
+	}
+	if config.JWTIssuerBaseURL != nil {
+		n.JWTIssuerBaseURL = *config.JWTIssuerBaseURL
+	} else {
+		n.JWTIssuerBaseURL = "https://auth.streamingfast.io"
+	}
+
+	return n
 }
 
 func LoadConfig(file string) (*Config, error) {
@@ -130,17 +144,14 @@ func LoadConfig(file string) (*Config, error) {
 				apiKey = key
 			} else {
 				keySum := sha256.Sum256([]byte(*networkConfig.ApiKey))
-				keyHash := base64.StdEncoding.EncodeToString(keySum[:])
+				keyHash := base64.URLEncoding.EncodeToString(keySum[:])
 
 				// Left as-is, it's an api key directly, use a unique name to avoid conflicts on caching
 				apiKey = &ApiKey{Key: *networkConfig.ApiKey, Name: networkName + "-unamed-" + keyHash}
 			}
 		}
 
-		network := &Network{Name: networkName, ApiKey: apiKey, Aliases: networkConfig.Aliases}
-		if networkConfig.Endpoint != nil {
-			network.Endpoint = *networkConfig.Endpoint
-		}
+		network := (&Network{Name: networkName, ApiKey: apiKey, Aliases: networkConfig.Aliases}).fromConfig(networkConfig)
 
 		config.Networks = append(config.Networks, network)
 		config.NetworksByName[networkName] = network
@@ -160,10 +171,7 @@ func LoadConfig(file string) (*Config, error) {
 			apiKey = key
 		}
 
-		defaultNetwork := &Network{Name: "default", ApiKey: apiKey}
-		if networkConfig.Endpoint != nil {
-			defaultNetwork.Endpoint = *networkConfig.Endpoint
-		}
+		defaultNetwork := (&Network{Name: "default", ApiKey: apiKey}).fromConfig(networkConfig)
 
 		config.DefaultNetwork = defaultNetwork
 		config.NetworksByName["default"] = defaultNetwork
@@ -178,9 +186,10 @@ type config struct {
 }
 
 type networkConfigDef struct {
-	Endpoint *string  `yaml:"endpoint"`
-	Aliases  []string `yaml:"alias"`
-	ApiKey   *string  `yaml:"apiKey"`
+	Endpoint         *string  `yaml:"endpoint"`
+	Aliases          []string `yaml:"alias"`
+	ApiKey           *string  `yaml:"apiKey"`
+	JWTIssuerBaseURL *string  `yaml:"jwtIssuerBaseUrl"`
 }
 
 func DefaultConfigLocation() (string, error) {

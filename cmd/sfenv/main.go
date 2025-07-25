@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -81,6 +83,8 @@ func main() {
 }
 
 func execute(cmd *cobra.Command, args []string) error {
+	zlog.Info("sfenv command started", zap.Strings("args", args))
+
 	input := &Input{}
 	if len(args) > 0 {
 		var err error
@@ -103,10 +107,13 @@ func execute(cmd *cobra.Command, args []string) error {
 	zlog.Info("config loaded", zap.Reflect("config", config))
 
 	endpoint := ""
+	jwtIssuerBaseURL := "https://auth.streamingfast.io"
 	apiKey := config.DefaultApiKey
 
 	if config.DefaultNetwork != nil {
 		endpoint = config.DefaultNetwork.Endpoint
+		jwtIssuerBaseURL = config.DefaultNetwork.JWTIssuerBaseURL
+
 		if key := config.DefaultNetwork.ApiKey; key != nil {
 			key = apiKey
 		}
@@ -118,6 +125,8 @@ func execute(cmd *cobra.Command, args []string) error {
 		} else {
 			if network := config.SearchNetwork(input.Identifier); network != nil {
 				endpoint = network.Endpoint
+				jwtIssuerBaseURL = network.JWTIssuerBaseURL
+
 				if network.ApiKey != nil {
 					apiKey = network.ApiKey
 				}
@@ -128,7 +137,7 @@ func execute(cmd *cobra.Command, args []string) error {
 	if apiKey != nil {
 		putsEnvVar("API_KEY", apiKey.Key)
 
-		token, err := getToken(apiKey, sflags.MustGetBool(cmd, "refresh"))
+		token, err := getToken(apiKey, jwtIssuerBaseURL, sflags.MustGetBool(cmd, "refresh"))
 		if err != nil {
 			return fmt.Errorf("getting token: %w", err)
 		}
@@ -174,7 +183,7 @@ func expandTokenFeatures(token string) error {
 	return nil
 }
 
-func getToken(apiKey *ApiKey, forceRefresh bool) (string, error) {
+func getToken(apiKey *ApiKey, jwtIssuerBaseURL string, forceRefresh bool) (string, error) {
 	defaultJWTCache, err := DefaultJWTCacheLocation()
 	if err != nil {
 		return "", fmt.Errorf("default JWT cache location: %w", err)
@@ -209,7 +218,7 @@ func getToken(apiKey *ApiKey, forceRefresh bool) (string, error) {
 	}
 
 	if token == nil {
-		refreshedToken, err := tokenFetch(apiKey.Key)
+		refreshedToken, err := tokenFetch(apiKey.Key, jwtIssuerBaseURL)
 		if err != nil {
 			return "", fmt.Errorf("fetching token: %w", err)
 		}
@@ -229,9 +238,12 @@ func getToken(apiKey *ApiKey, forceRefresh bool) (string, error) {
 }
 
 func tokenRead(apiKey *ApiKey, cacheFolder string) (*string, error) {
-	data, err := os.ReadFile(tokenCacheJWTFile(apiKey, cacheFolder))
+	tokenFile := tokenCacheJWTFile(apiKey, cacheFolder)
+	zlog.Debug("reading token from cache", zap.String("api_key", apiKey.Name), zap.String("token_file", tokenFile), zap.String("cache_folder", cacheFolder))
+
+	data, err := os.ReadFile(tokenFile)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
 		}
 
@@ -259,14 +271,14 @@ func tokenCacheJWTFile(apiKey *ApiKey, cacheFolder string) string {
 	return filepath.Join(cacheFolder, fmt.Sprintf("%s.jwt.txt", apiKey.Name))
 }
 
-func tokenFetch(apiKey string) (string, error) {
+func tokenFetch(apiKey string, jwtIssueBaseURL string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	data := fmt.Sprintf(`{"api_key":"%s"}`, apiKey)
 	body := strings.NewReader(data)
 
-	request, error := http.NewRequestWithContext(ctx, "POST", "https://auth.streamingfast.io/v1/auth/issue", body)
+	request, error := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/v1/auth/issue", jwtIssueBaseURL), body)
 	if error != nil {
 		return "", fmt.Errorf("new HTTP POST request: %w", error)
 	}
