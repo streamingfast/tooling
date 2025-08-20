@@ -155,11 +155,11 @@ func execute(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var envPrefixes = []string{"SF", "DFUSE", "FIREHOSE", "SUBSTREAMS", "STREAMINGFAST_FAST"}
+var envPrefixes = []string{"SF", "FIREHOSE", "SUBSTREAMS", "STREAMINGFAST_FAST"}
 
 func putsEnvVar(name, value string) {
 	for _, prefix := range envPrefixes {
-		fmt.Printf("export %s_%s=%s\n", prefix, strings.ToUpper(name), value)
+		fmt.Printf("export %s_%s='%s'\n", prefix, strings.ToUpper(name), value)
 	}
 }
 
@@ -169,16 +169,13 @@ func expandTokenFeatures(token string) error {
 		return fmt.Errorf("parsing JWT token: %w", err)
 	}
 
-	var features []string
 	for key, val := range claims {
 		if key == "cfg" {
 			for key, value := range val.(map[string]any) {
-				features = append(features, fmt.Sprintf("%s:%s", key, value.(string)))
+				putsEnvVar("API_FEATURE_"+strings.ToUpper(key), fmt.Sprintf("%s", value))
 			}
 		}
 	}
-
-	putsEnvVar("API_FEATURES", strings.Join(features, ", "))
 
 	return nil
 }
