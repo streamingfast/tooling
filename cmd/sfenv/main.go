@@ -159,7 +159,7 @@ var envPrefixes = []string{"SF", "FIREHOSE", "SUBSTREAMS", "STREAMINGFAST_FAST"}
 
 func putsEnvVar(name, value string) {
 	for _, prefix := range envPrefixes {
-		fmt.Printf("export %s_%s='%s'\n", prefix, strings.ToUpper(name), value)
+		fmt.Printf("export %s_%s=%s\n", prefix, strings.ToUpper(name), value)
 	}
 }
 
