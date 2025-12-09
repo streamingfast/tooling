@@ -62,6 +62,11 @@ func main() {
 		fmt.Printf("Average: %s\n", duration(sum/float64(elementCount)))
 		fmt.Printf("Median: %s\n", duration(median(distribution)))
 		fmt.Printf("Standard Deviation: %s\n", duration(standardDeviation(sum/float64(elementCount), distribution)))
+		fmt.Printf("Percentiles: p50=%s p90=%s p95=%s p99=%s\n",
+			duration(percentile(distribution, 50)),
+			duration(percentile(distribution, 90)),
+			duration(percentile(distribution, 95)),
+			duration(percentile(distribution, 99)))
 
 	} else {
 		fmt.Printf("Count: %d\n", count(elementCount))
@@ -70,6 +75,11 @@ func main() {
 		fmt.Printf("Average: %s\n", float(sum/float64(elementCount)))
 		fmt.Printf("Median: %s\n", float(median(distribution)))
 		fmt.Printf("Standard Deviation: %s\n", float(standardDeviation(sum/float64(elementCount), distribution)))
+		fmt.Printf("Percentiles: p50=%s p90=%s p95=%s p99=%s\n",
+			float(percentile(distribution, 50)),
+			float(percentile(distribution, 90)),
+			float(percentile(distribution, 95)),
+			float(percentile(distribution, 99)))
 	}
 }
 
@@ -123,6 +133,27 @@ func standardDeviation(mean float64, distribution []float64) float64 {
 	}
 
 	return math.Sqrt(sumSquaredDiffToMean / float64(len(distribution)-1))
+}
+
+func percentile(distribution []float64, p float64) float64 {
+	if len(distribution) == 0 {
+		return 0
+	}
+	if len(distribution) == 1 {
+		return distribution[0]
+	}
+
+	rank := (p / 100.0) * float64(len(distribution)-1)
+	lowerIndex := int(math.Floor(rank))
+	upperIndex := int(math.Ceil(rank))
+
+	if lowerIndex == upperIndex {
+		return distribution[lowerIndex]
+	}
+
+	// Linear interpolation between the two nearest values
+	weight := rank - float64(lowerIndex)
+	return distribution[lowerIndex]*(1-weight) + distribution[upperIndex]*weight
 }
 
 type count uint64
