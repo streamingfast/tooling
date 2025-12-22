@@ -12,7 +12,7 @@ A bunch of command line tools that is used by multiple developers within Streami
 
 #### Install
 
-To install all our CLI utilities, you can use `go install .cmd/...`.
+To install all our CLI utilities, you can use `go install ./cmd/...`.
 
 #### Usage
 
