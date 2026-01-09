@@ -38,7 +38,7 @@ func main() {
 func toDate(element string, timezoneIfUnset *time.Location) (out string) {
 	if location, found := cli.GetTimeZoneAbbreviationLocation(element); found {
 		// There is just a location, gives the current time in that location
-		return formatDateAt(time.Now().In(location))
+		return formatDate(time.Now().In(location))
 	}
 
 	hint := cli.DateLikeHintNone
@@ -62,9 +62,21 @@ func toDate(element string, timezoneIfUnset *time.Location) (out string) {
 }
 
 func formatDate(in time.Time) string {
-	return fmt.Sprintf("%s (%s)", in.Local().Format(time.RFC3339), in.UTC().Format(time.RFC3339))
+	local := in.Local()
+	utc := in.UTC()
+
+	_, inOffset := in.Zone()
+	_, localOffset := local.Zone()
+	_, utcOffset := utc.Zone()
+
+	// Prints only current timezone + UTC version
+	if inOffset == localOffset || inOffset == utcOffset {
+		return fmt.Sprintf("%s (%s)", formatTime(local), formatTime(utc))
+	}
+
+	return fmt.Sprintf("%s (%s, %s)", formatTime(local), formatTime(utc), formatTime(in))
 }
 
-func formatDateAt(in time.Time) string {
-	return fmt.Sprintf("%s (%s)", in.Format(time.RFC3339), in.UTC().Format(time.RFC3339))
+func formatTime(in time.Time) string {
+	return in.Format(time.RFC3339)
 }
