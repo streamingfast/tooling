@@ -16,15 +16,18 @@ const (
 	ValueKindDuration ValueKind = iota
 	// ValueKindNumber is a ValueKind of type Number.
 	ValueKindNumber
+	// ValueKindBytes is a ValueKind of type Bytes.
+	ValueKindBytes
 )
 
 var ErrInvalidValueKind = fmt.Errorf("not a valid ValueKind, try [%s]", strings.Join(_ValueKindNames, ", "))
 
-const _ValueKindName = "DurationNumber"
+const _ValueKindName = "DurationNumberBytes"
 
 var _ValueKindNames = []string{
 	_ValueKindName[0:8],
 	_ValueKindName[8:14],
+	_ValueKindName[14:19],
 }
 
 // ValueKindNames returns a list of possible string values of ValueKind.
@@ -37,6 +40,7 @@ func ValueKindNames() []string {
 var _ValueKindMap = map[ValueKind]string{
 	ValueKindDuration: _ValueKindName[0:8],
 	ValueKindNumber:   _ValueKindName[8:14],
+	ValueKindBytes:    _ValueKindName[14:19],
 }
 
 // String implements the Stringer interface.
@@ -55,8 +59,9 @@ func (x ValueKind) IsValid() bool {
 }
 
 var _ValueKindValue = map[string]ValueKind{
-	_ValueKindName[0:8]:  ValueKindDuration,
-	_ValueKindName[8:14]: ValueKindNumber,
+	_ValueKindName[0:8]:   ValueKindDuration,
+	_ValueKindName[8:14]:  ValueKindNumber,
+	_ValueKindName[14:19]: ValueKindBytes,
 }
 
 // ParseValueKind attempts to convert a string to a ValueKind.
