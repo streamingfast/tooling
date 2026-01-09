@@ -61,39 +61,37 @@ func main() {
 		fmt.Printf("Range: Min %s - Max %s\n", duration(*min), duration(*max))
 		fmt.Printf("Sum: %s\n", duration(sum))
 		fmt.Printf("Average: %s\n", duration(sum/float64(elementCount)))
-		fmt.Printf("Median: %s\n", duration(median(distribution)))
-		fmt.Printf("Standard Deviation: %s\n", duration(standardDeviation(sum/float64(elementCount), distribution)))
-		fmt.Printf("Percentiles: p50=%s p90=%s p95=%s p99=%s\n",
+		fmt.Printf("Median: %s (p90=%s p95=%s p99=%s)\n",
 			duration(percentile(distribution, 50)),
 			duration(percentile(distribution, 90)),
 			duration(percentile(distribution, 95)),
-			duration(percentile(distribution, 99)))
-
+			duration(percentile(distribution, 99)),
+		)
+		fmt.Printf("Standard Deviation: %s\n", duration(standardDeviation(sum/float64(elementCount), distribution)))
 	} else if currentValueKind != nil && *currentValueKind == ValueKindBytes {
 		fmt.Printf("Count: %d\n", count(elementCount))
 		fmt.Printf("Range: Min %s - Max %s\n", bytes(*min), bytes(*max))
 		fmt.Printf("Sum: %s\n", bytes(sum))
 		fmt.Printf("Average: %s\n", bytes(sum/float64(elementCount)))
-		fmt.Printf("Median: %s\n", bytes(median(distribution)))
-		fmt.Printf("Standard Deviation: %s\n", bytes(standardDeviation(sum/float64(elementCount), distribution)))
-		fmt.Printf("Percentiles: p50=%s p90=%s p95=%s p99=%s\n",
+		fmt.Printf("Median: %s (p90=%s p95=%s p99=%s)\n",
 			bytes(percentile(distribution, 50)),
 			bytes(percentile(distribution, 90)),
 			bytes(percentile(distribution, 95)),
-			bytes(percentile(distribution, 99)))
-
+			bytes(percentile(distribution, 99)),
+		)
+		fmt.Printf("Standard Deviation: %s\n", bytes(standardDeviation(sum/float64(elementCount), distribution)))
 	} else {
 		fmt.Printf("Count: %d\n", count(elementCount))
 		fmt.Printf("Range: Min %s - Max %s\n", formatIntOrFloat(*min), formatIntOrFloat(*max))
 		fmt.Printf("Sum: %s\n", formatIntOrFloat(sum))
 		fmt.Printf("Average: %s\n", formatIntOrFloat(sum/float64(elementCount)))
-		fmt.Printf("Median: %s\n", formatIntOrFloat(median(distribution)))
-		fmt.Printf("Standard Deviation: %s\n", formatIntOrFloat(standardDeviation(sum/float64(elementCount), distribution)))
-		fmt.Printf("Percentiles: p50=%s p90=%s p95=%s p99=%s\n",
+		fmt.Printf("Median: %s (p90=%s p95=%s p99=%s)\n",
 			formatIntOrFloat(percentile(distribution, 50)),
 			formatIntOrFloat(percentile(distribution, 90)),
 			formatIntOrFloat(percentile(distribution, 95)),
-			formatIntOrFloat(percentile(distribution, 99)))
+			formatIntOrFloat(percentile(distribution, 99)),
+		)
+		fmt.Printf("Standard Deviation: %s\n", formatIntOrFloat(standardDeviation(sum/float64(elementCount), distribution)))
 	}
 }
 
@@ -210,17 +208,6 @@ func parseBytes(element string) (bytes float64, isBinary bool) {
 	}
 
 	return value * unit.Multiplier, unit.IsBinary
-}
-
-func median(distribution []float64) float64 {
-	if len(distribution)%2 != 0 {
-		return distribution[int(math.Floor(float64(len(distribution))/2.0))]
-	}
-
-	upperIndex := len(distribution) / 2
-	lowerIndex := upperIndex - 1
-
-	return (distribution[lowerIndex] + distribution[upperIndex]) / 2.0
 }
 
 func standardDeviation(mean float64, distribution []float64) float64 {
