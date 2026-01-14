@@ -182,3 +182,89 @@ func dateSameLocation(t *testing.T, left, right time.Time) (time.Time, time.Time
 
 	return leftZoned, rightZoned
 }
+
+func Test_ParseTimeOnlyInput(t *testing.T) {
+	tests := []struct {
+		name     string
+		element  string
+		want     time.Duration
+		wantOk   bool
+	}{
+		{
+			name:    "high precision with milliseconds",
+			element: "19:25:00.949",
+			want:    19*time.Hour + 25*time.Minute + 949*time.Millisecond,
+			wantOk:  true,
+		},
+		{
+			name:    "high precision with microseconds",
+			element: "14:30:45.123456",
+			want:    14*time.Hour + 30*time.Minute + 45*time.Second + 123456*time.Microsecond,
+			wantOk:  true,
+		},
+		{
+			name:    "high precision with nanoseconds",
+			element: "08:15:30.123456789",
+			want:    8*time.Hour + 15*time.Minute + 30*time.Second + 123456789*time.Nanosecond,
+			wantOk:  true,
+		},
+		{
+			name:    "standard time format",
+			element: "15:04:05",
+			want:    15*time.Hour + 4*time.Minute + 5*time.Second,
+			wantOk:  true,
+		},
+		{
+			name:    "short time format",
+			element: "23:59",
+			want:    23*time.Hour + 59*time.Minute,
+			wantOk:  true,
+		},
+		{
+			name:    "midnight",
+			element: "00:00:00",
+			want:    0,
+			wantOk:  true,
+		},
+		{
+			name:    "just before midnight",
+			element: "23:59:59.999999999",
+			want:    23*time.Hour + 59*time.Minute + 59*time.Second + 999999999*time.Nanosecond,
+			wantOk:  true,
+		},
+		{
+			name:    "empty string",
+			element: "",
+			want:    0,
+			wantOk:  false,
+		},
+		{
+			name:    "invalid format",
+			element: "not-a-time",
+			want:    0,
+			wantOk:  false,
+		},
+		{
+			name:    "date-time format should not match",
+			element: "2024-01-01 15:04:05",
+			want:    0,
+			wantOk:  false,
+		},
+		{
+			name:    "just a number should not match",
+			element: "123456",
+			want:    0,
+			wantOk:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, gotOk := ParseTimeOnlyInput(tt.element)
+			assert.Equal(t, tt.wantOk, gotOk)
+			if tt.wantOk {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}

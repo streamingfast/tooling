@@ -525,3 +525,47 @@ var localLayouts = []string{
 	// Variation of non-local version, see in `layouts` list
 	"Mon Jan 02 15:04:05 2006",
 }
+
+// TimeOnlyLayouts are layouts that only contain time components (no date).
+// These are used by ParseTimeOnlyInput for computing deltas where the date
+// is irrelevant and only time differences matter (with rollover support).
+var timeOnlyLayouts = []string{
+	// High precision time formats (nanoseconds)
+	"15:04:05.999999999",
+
+	// Standard time formats
+	"15:04:05",
+
+	// Short time format
+	"15:04",
+}
+
+// ParseTimeOnlyInput tries to parse the element as a time-only value (no date component).
+// It returns the duration from midnight if successful. This is useful for computing
+// deltas between time values where only the time portion matters.
+//
+// Examples:
+//   - "19:25:00.949" returns 19h25m0.949s
+//   - "15:04:05" returns 15h4m5s
+//   - "23:30" returns 23h30m
+func ParseTimeOnlyInput(element string) (duration time.Duration, ok bool) {
+	if element == "" {
+		return 0, false
+	}
+
+	for _, layout := range timeOnlyLayouts {
+		parsed, err := time.Parse(layout, element)
+		if err == nil {
+			// Convert parsed time to duration from midnight
+			// The year/month/day will be 0000-01-01 from time.Parse
+			duration := time.Duration(parsed.Hour())*time.Hour +
+				time.Duration(parsed.Minute())*time.Minute +
+				time.Duration(parsed.Second())*time.Second +
+				time.Duration(parsed.Nanosecond())*time.Nanosecond
+
+			return duration, true
+		}
+	}
+
+	return 0, false
+}
