@@ -78,5 +78,9 @@ func formatDate(in time.Time) string {
 }
 
 func formatTime(in time.Time) string {
+	if in.Nanosecond() > 0 {
+		return in.Format(time.RFC3339Nano)
+	}
+
 	return in.Format(time.RFC3339)
 }
