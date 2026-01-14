@@ -36,7 +36,7 @@ func main() {
 	logging.InstantiateLoggers(logging.WithDefaultLevel(defaultLevel))
 
 	args := flag.Args()
-	cli.Ensure(len(args) == 2, cli.ErrorUsage(usage, "Expecting 2 argument, got %d", len(args)))
+	cli.Ensure(len(args) == 2, "%s", cli.ErrorUsage(usage, "Expecting 2 argument, got %d", len(args)))
 
 	ctx := context.Background()
 	src := args[0]
