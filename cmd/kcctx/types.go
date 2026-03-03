@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -148,7 +147,7 @@ type ClusterSpec struct {
 
 func LoadConfig(file string) (*Config, error) {
 	zlog.Debug("trying to load config file", zap.String("file", file))
-	content, err := ioutil.ReadFile(file)
+	content, err := os.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return newDefaultConfig(), nil

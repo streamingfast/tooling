@@ -2,15 +2,15 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-	"github.com/streamingfast/cli"
 	. "github.com/streamingfast/cli"
 	"github.com/streamingfast/logging"
 	"go.uber.org/zap"
-	"path/filepath"
-	"strings"
 )
 
 var zlog, _ = logging.RootLogger("kcctx", "github.com/streamingfast/tooling/cmd/kcctx")
@@ -24,20 +24,70 @@ func main() {
 		"kcctx [-g] [<cluster>@]<namespace>",
 		"Manages to which cluster/namespace your environment works with locally or globally",
 		Description(`
-			TBW
+			Switches your kubectl context to a specific cluster/namespace by generating
+			a scoped kubeconfig file from a master config template.
+
+			The tool outputs 'export KUBECONFIG=...' statements meant to be eval'd:
+
+			  $(kcctx eth-mainnet)
+
+			Prerequisites:
+
+			1. A master kubeconfig at ~/.kube/master.config containing all your cluster
+			   definitions, users and credentials. This file is used as a template and is
+			   never modified. It should only contain 'clusters:' and 'users:' sections
+			   (no 'contexts:' or 'current-context:' as those are managed by kcctx).
+
+			   The easiest way to create it is to copy your existing kubeconfig and strip
+			   the context-related fields:
+
+			     cp ~/.kube/config ~/.kube/master.config
+
+			   Then edit ~/.kube/master.config and remove the 'current-context:' line and
+			   the entire 'contexts:' block, keeping only 'apiVersion', 'kind', 'clusters'
+			   and 'users'. The result should look like:
+
+			     apiVersion: v1
+			     kind: Config
+			     clusters:
+			       - name: my-gke-cluster
+			         cluster:
+			           server: https://...
+			           certificate-authority-data: ...
+			     users:
+			       - name: my-user
+			         user:
+			           exec: ...
+
+			2. A kcctx config at ~/.config/kcctx/config.yaml that maps cluster names
+			   to their user in the master config:
+
+			     default_cluster: my-gke-cluster
+			     clusters:
+			       my-gke-cluster:
+			         user: my-user
+			       other-cluster:
+			         name: actual-kube-cluster-name  # optional, if different from key
+			         user: other-user
+
+			When invoked, kcctx reads master.config, extracts only the relevant cluster
+			and user entries, creates a context for <cluster>/<namespace>, and writes a
+			scoped kubeconfig to ~/.kube/config-<cluster>-<namespace>.
+
+			With -g (global), it writes directly to ~/.kube/config instead, affecting
+			all terminals.
 		`),
 		ExactArgs(1),
 		PersistentFlags(func(flags *pflag.FlagSet) {
 			flags.BoolP("global", "g", false, "The environment changes will apply globally to your system affecting the other terminals or new ones created")
-		}),
-		AfterAllHook(func(cmd *cobra.Command) {
-			cli.ConfigureViperForCommand(cmd, "KCCTX")
 		}),
 		Example(`
 			# Configure your environment to use 'eth-mainnet' namespace on <default_cluster>
 			$(kcctx eth-mainnet)
 		`),
 		Execute(execute),
+
+		ConfigureViper("KCCTX"),
 	)
 }
 
