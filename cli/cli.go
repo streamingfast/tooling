@@ -62,6 +62,15 @@ func IsFlagSet(flagName string) bool {
 	return isSet
 }
 
+func EncodeHex0xPrefix(in []byte) string {
+	hex := hex.EncodeToString(in)
+	if len(hex) == 0 {
+		return "0x"
+	}
+
+	return "0x" + strings.TrimLeft(hex, "0")
+}
+
 func EncodeHex(in []byte) string {
 	hex := hex.EncodeToString(in)
 	if len(hex) == 0 {
