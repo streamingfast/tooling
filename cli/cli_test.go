@@ -95,6 +95,21 @@ func Test_ParseDateLikeInput(t *testing.T) {
 			"2025-04-02 16:00:00 UTC",
 			want{dateAtLocation(t, "2025-04-02 16:00:00", time.UTC), DateParsedFromLayout, true},
 		},
+		{
+			// Hardfork timestamp format midnight UTC (shifts to previous day in local)
+			"2026-04-13 00:00:00 UTC",
+			want{dateAtLocation(t, "2026-04-13 00:00:00", time.UTC), DateParsedFromLayout, true},
+		},
+		{
+			// Hardfork timestamp early morning UTC (shifts to previous day in local)
+			"2026-04-28 02:30:00 UTC",
+			want{dateAtLocation(t, "2026-04-28 02:30:00", time.UTC), DateParsedFromLayout, true},
+		},
+		{
+			// Hardfork timestamp afternoon UTC
+			"2026-03-19 14:30:00 UTC",
+			want{dateAtLocation(t, "2026-03-19 14:30:00", time.UTC), DateParsedFromLayout, true},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.element, func(t *testing.T) {
