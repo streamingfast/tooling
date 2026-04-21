@@ -9,10 +9,11 @@ import (
 )
 
 var testLocation = time.FixedZone("EST", -5*60*60)
+var edtLocation = time.FixedZone("EDT", -4*60*60)
 
 func init() {
 	timeNow = func() time.Time {
-		return time.Unix(1732886907, 718000000)
+		return time.Unix(1732886907, 718000000).UTC()
 	}
 }
 
@@ -28,7 +29,7 @@ func Test_ParseDateLikeInput(t *testing.T) {
 	}{
 		{
 			"now",
-			want{date(t, "2024-11-29 08:28:27.718-05:00"), DateParsedFromLayout, true},
+			want{date(t, "2024-11-29 13:28:27.718Z"), DateParsedFromLayout, true},
 		},
 		{
 			"2023-04-13T14:25:27.180-0400",
@@ -58,7 +59,7 @@ func Test_ParseDateLikeInput(t *testing.T) {
 		{
 			// Found `zap-pretty` output
 			"2024-07-23 14:37:10.304 EDT",
-			want{date(t, "2024-07-23 14:37:10.304-04:00"), DateParsedFromLayout, true},
+			want{dateAtLocation(t, "2024-07-23 14:37:10.304", edtLocation), DateParsedFromLayout, true},
 		},
 		{
 			// Found in some Telegram date reporting
