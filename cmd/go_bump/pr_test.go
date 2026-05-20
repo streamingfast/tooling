@@ -62,29 +62,76 @@ func TestParseUpgradeEntries(t *testing.T) {
 	}
 }
 
-func TestPRBranchName(t *testing.T) {
+func TestModuleShortName(t *testing.T) {
 	tests := []struct {
 		name     string
-		entries  []upgradeEntry
+		module   string
 		expected string
 	}{
 		{
-			name:     "no entries",
-			entries:  nil,
-			expected: "bump/dependencies",
+			name:     "simple module",
+			module:   "github.com/streamingfast/bstream",
+			expected: "bstream",
 		},
 		{
-			name: "single entry",
-			entries: []upgradeEntry{
-				{module: "github.com/streamingfast/bstream"},
+			name:     "module with version suffix",
+			module:   "github.com/streamingfast/bstream@develop",
+			expected: "bstream",
+		},
+		{
+			name:     "hyphenated module",
+			module:   "github.com/streamingfast/firehose-core",
+			expected: "firehose-core",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, moduleShortName(tt.module))
+		})
+	}
+}
+
+func TestPreBumpBranchName(t *testing.T) {
+	tests := []struct {
+		name       string
+		packageIDs []PackageID
+		expected   string
+	}{
+		{
+			name:       "single package with version",
+			packageIDs: []PackageID{"github.com/streamingfast/bstream@develop"},
+			expected:   "bump/bstream",
+		},
+		{
+			name:       "single package without version",
+			packageIDs: []PackageID{"github.com/streamingfast/firehose-core"},
+			expected:   "bump/firehose-core",
+		},
+		{
+			name: "two packages",
+			packageIDs: []PackageID{
+				"github.com/streamingfast/bstream@develop",
+				"github.com/streamingfast/dstore@develop",
 			},
-			expected: "bump/bstream",
+			expected: "bump/bstream-dstore",
 		},
 		{
-			name: "multiple entries",
-			entries: []upgradeEntry{
-				{module: "github.com/foo/bar"},
-				{module: "github.com/baz/qux"},
+			name: "three packages",
+			packageIDs: []PackageID{
+				"github.com/streamingfast/bstream@develop",
+				"github.com/streamingfast/dstore@develop",
+				"github.com/streamingfast/firehose-core@develop",
+			},
+			expected: "bump/bstream-dstore-firehose-core",
+		},
+		{
+			name: "four packages uses generic name",
+			packageIDs: []PackageID{
+				"github.com/streamingfast/bstream@develop",
+				"github.com/streamingfast/dstore@develop",
+				"github.com/streamingfast/firehose-core@develop",
+				"github.com/streamingfast/substreams@develop",
 			},
 			expected: "bump/dependencies",
 		},
@@ -92,7 +139,54 @@ func TestPRBranchName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, prBranchName(tt.entries))
+			require.Equal(t, tt.expected, preBumpBranchName(tt.packageIDs))
+		})
+	}
+}
+
+func TestFinalBranchName(t *testing.T) {
+	tests := []struct {
+		name       string
+		preBranch  string
+		upgrades   []upgradeEntry
+		packageIDs []PackageID
+		expected   string
+	}{
+		{
+			name:      "single package gets version appended",
+			preBranch: "bump/dstore",
+			upgrades: []upgradeEntry{
+				{module: "github.com/streamingfast/dstore", toVersion: "v0.2.4-0.20260520032149-6421410d7faa"},
+			},
+			packageIDs: []PackageID{"github.com/streamingfast/dstore@develop"},
+			expected:   "bump/dstore-to-v0.2.4-0.20260520032149-6421410d7faa",
+		},
+		{
+			name:      "single package no upgrades returns pre-bump name",
+			preBranch: "bump/dstore",
+			upgrades:  nil,
+			packageIDs: []PackageID{"github.com/streamingfast/dstore@develop"},
+			expected:  "bump/dstore",
+		},
+		{
+			name:      "multiple packages returns pre-bump name",
+			preBranch: "bump/bstream-dstore",
+			upgrades: []upgradeEntry{
+				{module: "github.com/streamingfast/bstream", toVersion: "v0.1.0"},
+				{module: "github.com/streamingfast/dstore", toVersion: "v0.2.0"},
+			},
+			packageIDs: []PackageID{
+				"github.com/streamingfast/bstream@develop",
+				"github.com/streamingfast/dstore@develop",
+			},
+			expected: "bump/bstream-dstore",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := finalBranchName(tt.preBranch, tt.upgrades, tt.packageIDs)
+			assert.Equal(t, tt.expected, got)
 		})
 	}
 }
@@ -179,25 +273,25 @@ func TestNormalizeGitHubRepo(t *testing.T) {
 
 func TestPRURLFromRemote(t *testing.T) {
 	tests := []struct {
-		name        string
-		remoteURL   string
-		baseBranch  string
-		headBranch  string
-		expected    string
+		name       string
+		remoteURL  string
+		baseBranch string
+		headBranch string
+		expected   string
 	}{
 		{
 			name:       "github https remote",
 			remoteURL:  "https://github.com/streamingfast/tooling.git",
 			baseBranch: "master",
-			headBranch: "bump/bstream",
-			expected:   "https://github.com/streamingfast/tooling/compare/master...bump/bstream",
+			headBranch: "bump/bstream-to-v0.1.0",
+			expected:   "https://github.com/streamingfast/tooling/compare/master...bump/bstream-to-v0.1.0",
 		},
 		{
 			name:       "github ssh remote",
 			remoteURL:  "git@github.com:streamingfast/tooling.git",
 			baseBranch: "develop",
-			headBranch: "bump/bstream",
-			expected:   "https://github.com/streamingfast/tooling/compare/develop...bump/bstream",
+			headBranch: "bump/bstream-to-v0.1.0",
+			expected:   "https://github.com/streamingfast/tooling/compare/develop...bump/bstream-to-v0.1.0",
 		},
 		{
 			name:       "non-github remote returns empty",
@@ -212,39 +306,6 @@ func TestPRURLFromRemote(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := prURLFromRemote(tt.remoteURL, tt.baseBranch, tt.headBranch)
 			assert.Equal(t, tt.expected, got)
-		})
-	}
-}
-
-func TestBumpBranchFromPackageIDs(t *testing.T) {
-	tests := []struct {
-		name       string
-		packageIDs []PackageID
-		expected   string
-	}{
-		{
-			name:       "single package with version",
-			packageIDs: []PackageID{"github.com/streamingfast/bstream@develop"},
-			expected:   "bump/bstream",
-		},
-		{
-			name:       "single package without version",
-			packageIDs: []PackageID{"github.com/streamingfast/firehose-core"},
-			expected:   "bump/firehose-core",
-		},
-		{
-			name: "multiple packages",
-			packageIDs: []PackageID{
-				"github.com/streamingfast/bstream@develop",
-				"github.com/streamingfast/dstore@develop",
-			},
-			expected: "bump/dependencies",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, bumpBranchFromPackageIDs(tt.packageIDs))
 		})
 	}
 }

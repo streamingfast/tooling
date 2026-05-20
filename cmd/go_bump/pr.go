@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+
+	. "github.com/streamingfast/cli"
 )
 
 // upgradeEntry represents a single package upgrade extracted from `go get` output.
@@ -40,16 +42,42 @@ func parseUpgradeEntries(output string) []upgradeEntry {
 	return entries
 }
 
-// prBranchName returns the git branch name to use for the PR.  When there is
-// exactly one upgraded module we use the last path component of the module
-// path.  For multiple modules we fall back to a generic "bump-dependencies"
-// name so the branch stays short and unambiguous.
-func prBranchName(entries []upgradeEntry) string {
-	if len(entries) == 1 {
-		parts := strings.Split(entries[0].module, "/")
-		return "bump/" + parts[len(parts)-1]
+// moduleShortName returns the last path component of a module path, stripping
+// any @version suffix first.
+func moduleShortName(module string) string {
+	base, _, _ := strings.Cut(module, "@")
+	parts := strings.Split(base, "/")
+	return parts[len(parts)-1]
+}
+
+// preBumpBranchName returns the initial branch name to use before `go get`
+// runs.  For a single package we use the short name only; for 2–3 packages we
+// join their short names; for 4+ we use "bump/dependencies".
+func preBumpBranchName(packageIDs []PackageID) string {
+	switch len(packageIDs) {
+	case 1:
+		return "bump/" + moduleShortName(string(packageIDs[0]))
+	case 2, 3:
+		parts := make([]string, len(packageIDs))
+		for i, id := range packageIDs {
+			parts[i] = moduleShortName(string(id))
+		}
+		return "bump/" + strings.Join(parts, "-")
+	default:
+		return "bump/dependencies"
 	}
-	return "bump/dependencies"
+}
+
+// finalBranchName computes the definitive branch name after the bump.
+// For a single upgraded module the name includes the new version; for
+// multiple modules (or when there are no upgrades) the pre-bump name is
+// returned unchanged.
+func finalBranchName(preBranch string, upgrades []upgradeEntry, packageIDs []PackageID) string {
+	if len(packageIDs) == 1 && len(upgrades) > 0 {
+		short := moduleShortName(upgrades[0].module)
+		return fmt.Sprintf("bump/%s-to-%s", short, upgrades[0].toVersion)
+	}
+	return preBranch
 }
 
 // prCommitMessage builds the git commit message for the dependency bump.
@@ -77,6 +105,12 @@ func gitCurrentBranch(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("git rev-parse: %w", err)
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// gitBranchExists reports whether a local branch with the given name exists.
+func gitBranchExists(ctx context.Context, branch string) bool {
+	err := exec.CommandContext(ctx, "git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch).Run()
+	return err == nil
 }
 
 // gitRemoteURL returns the URL of the "origin" remote, or an empty string when
@@ -126,43 +160,31 @@ func normalizeGitHubRepo(remoteURL string) string {
 // set of package IDs.  It creates a branch, bumps the dependencies, commits
 // the changes, and either opens a PR with `gh` or prints a URL.
 func runPRMode(ctx context.Context, packageIDs []PackageID, config *Config) error {
-	// Remember the starting branch so we can return to it via defer.
 	originalBranch, err := gitCurrentBranch(ctx)
 	if err != nil {
 		return fmt.Errorf("determine current branch: %w", err)
 	}
 
-	// Optimistically run `go get` first so we know which packages were actually
-	// upgraded before we touch any git state.  This also means we leave the
-	// working tree in the expected state without requiring a branch switch first.
-	//
-	// However, we need to create the branch *before* we modify go.mod/go.sum so
-	// that the changes land on the right branch.  We therefore:
-	//   1. Capture the current branch.
-	//   2. Create + checkout the bump branch.
-	//   3. Run bump().
-	//   4. Stage, commit, push/open PR.
-	//   5. Return to the original branch.
+	// Compute the initial branch name before we know the exact new version.
+	// For a single package this is "bump/<short>"; we rename it after `go get`.
+	initialBranch := preBumpBranchName(packageIDs)
 
-	// Pre-flight: make sure `go get` output contains at least one upgrade so we
-	// don't create an empty PR.  We run bump() after the branch is created so
-	// the go.mod changes land on the right branch.  Performing a "dry run" is
-	// not straightforward, so we proceed and bail out before committing if
-	// nothing changed.
-
-	// Determine the bump branch name from the raw package IDs (before we know
-	// exact upgrade versions) using a best-effort slug derived from the last
-	// component of each resolved ID module path.
-	bumpBranch := bumpBranchFromPackageIDs(packageIDs)
-
-	// Create and check out the new branch.
-	checkoutCmd := exec.CommandContext(ctx, "git", "checkout", "-b", bumpBranch)
-	if out, err := checkoutCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("create branch %q: %w\n%s", bumpBranch, err, out)
+	if gitBranchExists(ctx, initialBranch) {
+		confirmed, wasAnswered := AskConfirmation("Branch %q already exists. Delete it and continue?", initialBranch)
+		if !wasAnswered || !confirmed {
+			return fmt.Errorf("aborted: branch %q already exists", initialBranch)
+		}
+		if out, err := exec.CommandContext(ctx, "git", "branch", "-D", initialBranch).CombinedOutput(); err != nil {
+			return fmt.Errorf("delete branch %q: %w\n%s", initialBranch, err, out)
+		}
 	}
 
-	// Ensure we return to the original branch when the function exits, regardless
-	// of success or failure.
+	// Create and check out the initial bump branch.
+	if out, err := exec.CommandContext(ctx, "git", "checkout", "-b", initialBranch).CombinedOutput(); err != nil {
+		return fmt.Errorf("create branch %q: %w\n%s", initialBranch, err, out)
+	}
+
+	// Ensure we return to the original branch when the function exits.
 	defer func() {
 		returnCmd := exec.CommandContext(ctx, "git", "checkout", originalBranch)
 		if out, err := returnCmd.CombinedOutput(); err != nil {
@@ -170,85 +192,72 @@ func runPRMode(ctx context.Context, packageIDs []PackageID, config *Config) erro
 		}
 	}()
 
-	// Run the bump and capture the raw output so we can parse upgrade entries.
-	goGetOutput, ok := bumpWithOutput(ctx, packageIDs...)
+	// Run `go get` — output is printed as it goes via goGet writing to os.Stdout.
+	goGetOutput, ok := goGet(ctx, os.Stdout, packageIDs...)
 	if !ok {
-		// bumpWithOutput already printed the error; just return a sentinel.
 		return fmt.Errorf("go get failed")
 	}
 
 	upgrades := parseUpgradeEntries(goGetOutput)
 	if len(upgrades) == 0 {
-		// Nothing was actually upgraded.  Switch back and report.
 		return fmt.Errorf("no packages were upgraded; nothing to commit")
 	}
 
-	// Optionally run go mod tidy if configured.
+	// For a single package, rename the branch to include the new version.
+	bumpBranch := finalBranchName(initialBranch, upgrades, packageIDs)
+	if bumpBranch != initialBranch {
+		if gitBranchExists(ctx, bumpBranch) {
+			confirmed, wasAnswered := AskConfirmation("Branch %q already exists. Delete it and continue?", bumpBranch)
+			if !wasAnswered || !confirmed {
+				return fmt.Errorf("aborted: branch %q already exists", bumpBranch)
+			}
+			if out, err := exec.CommandContext(ctx, "git", "branch", "-D", bumpBranch).CombinedOutput(); err != nil {
+				return fmt.Errorf("delete branch %q: %w\n%s", bumpBranch, err, out)
+			}
+		}
+		if out, err := exec.CommandContext(ctx, "git", "branch", "-m", initialBranch, bumpBranch).CombinedOutput(); err != nil {
+			return fmt.Errorf("rename branch to %q: %w\n%s", bumpBranch, err, out)
+		}
+	}
+
 	if config.AfterBump.GoModTidy {
 		runGoModTidy(ctx)
 	}
 
 	// Stage go.mod and go.sum.
-	addCmd := exec.CommandContext(ctx, "git", "add", "go.mod", "go.sum")
-	if out, err := addCmd.CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(ctx, "git", "add", "go.mod", "go.sum").CombinedOutput(); err != nil {
 		return fmt.Errorf("git add: %w\n%s", err, out)
 	}
 
 	// Create the commit.
 	commitMsg := prCommitMessage(upgrades)
-	commitCmd := exec.CommandContext(ctx, "git", "commit", "-m", commitMsg)
-	if out, err := commitCmd.CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(ctx, "git", "commit", "-m", commitMsg).CombinedOutput(); err != nil {
 		return fmt.Errorf("git commit: %w\n%s", err, out)
 	}
 
-	// Open or print the PR.
+	// Push the branch to the remote so that `gh pr create` (or a manual URL)
+	// can reference it.
+	pushCmd := exec.CommandContext(ctx, "git", "push", "--set-upstream", "origin", bumpBranch)
+	pushCmd.Stdout = os.Stdout
+	pushCmd.Stderr = os.Stderr
+	if err := pushCmd.Run(); err != nil {
+		return fmt.Errorf("git push: %w", err)
+	}
+
 	if _, err := exec.LookPath("gh"); err == nil {
-		return openPRWithGH(ctx, originalBranch, commitMsg)
+		return openPRWithGH(ctx, originalBranch, bumpBranch, commitMsg)
 	}
 
-	return pushAndPrintPRURL(ctx, originalBranch, bumpBranch)
-}
-
-// bumpBranchFromPackageIDs derives a branch name from the resolved package IDs
-// before we know exact upgraded versions.
-func bumpBranchFromPackageIDs(packageIDs []PackageID) string {
-	if len(packageIDs) == 1 {
-		// Strip any @version suffix, then take the last path component.
-		module, _, _ := strings.Cut(string(packageIDs[0]), "@")
-		parts := strings.Split(module, "/")
-		return "bump/" + parts[len(parts)-1]
-	}
-	return "bump/dependencies"
-}
-
-// bumpWithOutput is like bump() but returns the raw combined output together
-// with a boolean indicating success.
-func bumpWithOutput(ctx context.Context, packageIDs ...PackageID) (output string, ok bool) {
-	args := make([]string, 1+len(packageIDs))
-	args[0] = "get"
-	for i, id := range packageIDs {
-		args[i+1] = string(id)
-	}
-
-	cmd := exec.CommandContext(ctx, "go", args...)
-	rawOutput, err := cmd.CombinedOutput()
-	output = string(rawOutput)
-	fmt.Print(output)
-
-	if err != nil {
-		printlnError("Failed to bump packages %s (command %q)", strings.Join(args[1:], ", "), cmd)
-		return output, false
-	}
-	return output, true
+	return printPRURL(ctx, originalBranch, bumpBranch)
 }
 
 // openPRWithGH uses the `gh` CLI to create a pull request.
-func openPRWithGH(ctx context.Context, baseBranch, commitMsg string) error {
-	// Use the first line of the commit message as the PR title.
+func openPRWithGH(ctx context.Context, baseBranch, headBranch, commitMsg string) error {
 	title, _, _ := strings.Cut(commitMsg, "\n")
 
 	ghCmd := exec.CommandContext(ctx, "gh", "pr", "create",
 		"--base", baseBranch,
+		"--head", headBranch,
 		"--title", title,
 		"--body", commitMsg,
 	)
@@ -260,15 +269,8 @@ func openPRWithGH(ctx context.Context, baseBranch, commitMsg string) error {
 	return nil
 }
 
-// pushAndPrintPRURL pushes the current branch and prints the GitHub compare URL.
-func pushAndPrintPRURL(ctx context.Context, baseBranch, headBranch string) error {
-	pushCmd := exec.CommandContext(ctx, "git", "push", "--set-upstream", "origin", headBranch)
-	pushCmd.Stdout = os.Stdout
-	pushCmd.Stderr = os.Stderr
-	if err := pushCmd.Run(); err != nil {
-		return fmt.Errorf("git push: %w", err)
-	}
-
+// printPRURL prints a GitHub compare URL the user can open manually.
+func printPRURL(ctx context.Context, baseBranch, headBranch string) error {
 	remoteURL := gitRemoteURL(ctx)
 	prURL := prURLFromRemote(remoteURL, baseBranch, headBranch)
 	if prURL != "" {

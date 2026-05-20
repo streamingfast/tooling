@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -93,39 +94,43 @@ func run(cmd *cobra.Command, args []string) error {
 		return runPRMode(cmd.Context(), packageIDs, config)
 	}
 
-	bumpedSomething := bump(cmd.Context(), packageIDs...)
+	output, ok := goGet(cmd.Context(), os.Stdout, packageIDs...)
+	if !ok {
+		os.Exit(1)
+	}
 
-	if bumpedSomething && config.AfterBump.GoModTidy {
+	if strings.Contains(output, "go: upgraded") && config.AfterBump.GoModTidy {
 		runGoModTidy(cmd.Context())
 	}
 
 	return nil
 }
 
-func bump(ctx context.Context, packageIDs ...PackageID) (bumpedSomething bool) {
+// goGet runs `go get` for the given package IDs and writes the combined output
+// to w.  It returns the full output as a string and whether the command
+// succeeded.
+func goGet(ctx context.Context, w io.Writer, packageIDs ...PackageID) (output string, ok bool) {
 	args := make([]string, 1+len(packageIDs))
 	args[0] = "get"
-
-	for i, packageID := range packageIDs {
-		args[i+1] = string(packageID)
+	for i, id := range packageIDs {
+		args[i+1] = string(id)
 	}
 
 	cmd := exec.CommandContext(ctx, "go", args...)
 	rawOutput, err := cmd.CombinedOutput()
-	if err != nil {
-		// FIXME: Create specialized error that formats it correctly to stderr
-		printlnError("Failed to bump packages %s (command %q)", strings.Join(args[1:], ", "), cmd)
-		os.Stderr.Write(rawOutput)
-		os.Exit(1)
+	output = string(rawOutput)
+
+	if w != nil {
+		fmt.Fprint(w, output)
 	}
 
-	output := string(rawOutput)
-	fmt.Print(output)
+	if err != nil {
+		printlnError("Failed to bump packages %s (command %q)", strings.Join(args[1:], ", "), cmd)
+		return output, false
+	}
 
 	zlog.Debug("completed bumping of package", zap.Strings("package_ids", args[1:]))
-
-	// Not perfect, but should be good enough
-	return strings.Contains(output, "go: upgraded")
+	return output, true
 }
 
 func runGoModTidy(ctx context.Context) {
