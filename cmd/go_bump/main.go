@@ -26,6 +26,7 @@ func main() {
 		MinimumNArgs(1),
 		Flags(func(flags *pflag.FlagSet) {
 			flags.BoolP("tidy", "t", false, "Perform a 'go mod tidy' after bumping dependencies")
+			flags.Bool("pr", false, "Create a branch, commit the bump, and open a pull request")
 		}),
 		Description(`
 			This command works best if you configure a config file that defines your most often used
@@ -85,6 +86,11 @@ func run(cmd *cobra.Command, args []string) error {
 		}
 
 		packageIDs[i] = resolved
+	}
+
+	prMode := sflags.MustGetBool(cmd, "pr")
+	if prMode {
+		return runPRMode(cmd.Context(), packageIDs, config)
 	}
 
 	bumpedSomething := bump(cmd.Context(), packageIDs...)
