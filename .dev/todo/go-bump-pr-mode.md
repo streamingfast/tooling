@@ -29,6 +29,14 @@ Add a `--pr` mode to `go_bump` that would:
 
 ## Dev Feedback
 
+All feedback items addressed in commit `08ab1e3`:
+
+1. **Merged bump/bumpWithOutput** — replaced both with a single `goGet(ctx, w, packageIDs...)` helper that writes output to any `io.Writer` (or nil to suppress).
+2. **Single-package branch name** — implemented Option A: create `bump/<short>` initially, run `go get`, parse upgraded version, rename to `bump/<short>-to-<version>` via `git branch -m`.
+3. **Branch name for 2-3 packages** — `preBumpBranchName` joins short names: 2 pkgs → `bump/a-b`, 3 pkgs → `bump/a-b-c`, 4+ → `bump/dependencies`.
+4. **Branch already exists** — uses `cli.AskConfirmation` to prompt before `git branch -D`; aborts if user declines or is non-interactive.
+5. **gh pr create fix** — branch is now pushed to remote (via `git push --set-upstream origin <branch>`) before `gh pr create`; also passes `--head <branch>` explicitly.
+
 ## Spec & Implementation
 
 ### Overview
@@ -36,26 +44,36 @@ Add a `--pr` mode to `go_bump` that would:
 Added `--pr` boolean flag to `go_bump`.  When set, the command:
 
 1. Reads the current branch via `git rev-parse --abbrev-ref HEAD`.
-2. Creates + checks out a `bump/<name>` branch (or `bump/dependencies` for multiple packages).
-3. Installs a `defer` to restore the original branch on exit.
-4. Runs `go get` via `bumpWithOutput` (captures raw output for parsing).
-5. Parses upgrade lines (`go: upgraded <module> <from> => <to>`) from the output.
-6. Aborts early (with branch restore) when nothing was upgraded.
-7. Optionally runs `go mod tidy` if `config.AfterBump.GoModTidy` is true.
-8. Stages `go.mod` and `go.sum` with `git add`.
-9. Commits with a message generated from the parsed upgrade entries.
-10. If `gh` is in `$PATH`: runs `gh pr create --base <original> --title ... --body ...`.
-11. Otherwise: runs `git push --set-upstream origin <bump-branch>` and prints a GitHub compare URL derived from the `origin` remote URL.
+2. Computes the initial branch name from package IDs (`preBumpBranchName`):
+   - 1 package: `bump/<short>`
+   - 2 packages: `bump/<short1>-<short2>`
+   - 3 packages: `bump/<short1>-<short2>-<short3>`
+   - 4+ packages: `bump/dependencies`
+3. If the computed branch exists, asks the user for confirmation before deleting it (via `cli.AskConfirmation`).
+4. Creates + checks out the initial branch.
+5. Installs a `defer` to restore the original branch on exit.
+6. Runs `go get` via `goGet` (the unified helper that both PR-mode and normal mode use).
+7. Parses upgrade lines from output; aborts when nothing was upgraded.
+8. For a single package, renames the branch to `bump/<short>-to-<new-version>` via `git branch -m`.
+9. Optionally runs `go mod tidy` if `config.AfterBump.GoModTidy` is true.
+10. Stages `go.mod` and `go.sum` with `git add`.
+11. Commits with a message generated from the parsed upgrade entries.
+12. Pushes the branch to `origin` with `git push --set-upstream origin <branch>`.
+13. If `gh` is in `$PATH`: runs `gh pr create --base <original> --head <branch> --title ... --body ...`.
+14. Otherwise: prints a GitHub compare URL derived from the `origin` remote URL.
 
 ### Files changed
 
-- `cmd/go_bump/main.go` — added `--pr` flag, route to `runPRMode` when set.
-- `cmd/go_bump/pr.go` — new file with all PR-mode logic.
-- `cmd/go_bump/pr_test.go` — unit tests covering parsing, branch naming, commit message generation, remote URL normalisation, and compare URL construction.
-- `CHANGELOG.md` — new file documenting the addition.
+- `cmd/go_bump/main.go` — replaced `bump`/`bumpWithOutput` with `goGet(ctx, w, ...)`.
+- `cmd/go_bump/pr.go` — full PR-mode logic with updated branch naming, `AskConfirmation`, push-before-PR, and `--head` flag.
+- `cmd/go_bump/pr_test.go` — tests updated to cover `preBumpBranchName`, `finalBranchName`, `moduleShortName`, and removed old `bumpBranchFromPackageIDs`/`prBranchName` tests.
+- `CHANGELOG.md` — updated entry with full feature description.
 
 ## State Tracker
 
 **Last Updated:** 2026-05-20
-**Current Step:** Step 1 — Implementation complete, ready for review
+**Current Step:** Step 2 — Review feedback addressed
 **Status:** Review
+
+- Step 1 (2026-05-20): Initial implementation complete.
+- Step 2 (2026-05-20): Addressed all dev feedback: merged goGet helper, improved branch naming (1 pkg gets `-to-<version>`, 2-3 join short names, 4+ generic), branch-exists confirmation via `cli.AskConfirmation`, push before `gh pr create`, explicit `--head` flag.
