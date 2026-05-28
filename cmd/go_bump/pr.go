@@ -50,6 +50,33 @@ func moduleShortName(module string) string {
 	return parts[len(parts)-1]
 }
 
+// modulePath returns the bare module path of a (possibly versioned) package ID,
+// stripping any "@version" suffix, e.g. "github.com/streamingfast/eth-go@develop"
+// becomes "github.com/streamingfast/eth-go".
+func modulePath(id string) string {
+	base, _, _ := strings.Cut(id, "@")
+	return base
+}
+
+// unupgradedRequestedPackages returns the bare module paths of the requested
+// package IDs that were NOT actually upgraded by `go get`. An empty result
+// means every requested package was upgraded.
+func unupgradedRequestedPackages(packageIDs []PackageID, upgrades []upgradeEntry) []string {
+	upgraded := make(map[string]struct{}, len(upgrades))
+	for _, u := range upgrades {
+		upgraded[u.module] = struct{}{}
+	}
+
+	var missing []string
+	for _, id := range packageIDs {
+		path := modulePath(string(id))
+		if _, ok := upgraded[path]; !ok {
+			missing = append(missing, path)
+		}
+	}
+	return missing
+}
+
 // preBumpBranchName returns the initial branch name to use before `go get`
 // runs.  For a single package we use the short name only; for 2–3 packages we
 // join their short names; for 4+ we use "bump/dependencies".
@@ -111,6 +138,19 @@ func gitCurrentBranch(ctx context.Context) (string, error) {
 func gitBranchExists(ctx context.Context, branch string) bool {
 	err := exec.CommandContext(ctx, "git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch).Run()
 	return err == nil
+}
+
+// revertGoModChanges restores go.mod and go.sum to their committed state,
+// discarding any modifications made by `go get` during the aborted bump. This
+// is used when the requested package was not upgraded so the repository is left
+// exactly as it was before the command ran.
+func revertGoModChanges(ctx context.Context) {
+	cmd := exec.CommandContext(ctx, "git", "checkout", "--", "go.mod", "go.sum")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to revert go.mod/go.sum changes: %v\n%s\n", err, out)
+		return
+	}
+	fmt.Fprintln(os.Stderr, "Reverted go.mod/go.sum changes.")
 }
 
 // gitRemoteURL returns the URL of the "origin" remote, or an empty string when
@@ -201,6 +241,29 @@ func runPRMode(ctx context.Context, packageIDs []PackageID, config *Config) erro
 	upgrades := parseUpgradeEntries(goGetOutput)
 	if len(upgrades) == 0 {
 		return fmt.Errorf("no packages were upgraded; nothing to commit")
+	}
+
+	// Validate that the packages the user actually asked for were upgraded.
+	// `go get` can upgrade transitive dependencies even when a requested
+	// package was already at the desired version; creating a PR for those
+	// unrelated bumps is almost never what the user wanted.
+	if missing := unupgradedRequestedPackages(packageIDs, upgrades); len(missing) > 0 {
+		printlnError("The following requested package(s) were NOT upgraded (they were likely already at the requested version):")
+		for _, m := range missing {
+			printlnError("  - %s", m)
+		}
+		if len(upgrades) > 0 {
+			printlnError("However, `go get` did upgrade the following (transitive) dependencies:")
+			for _, u := range upgrades {
+				printlnError("  - %s %s => %s", u.module, u.fromVersion, u.toVersion)
+			}
+		}
+
+		confirmed, wasAnswered := AskConfirmation("None of the requested packages were bumped. Revert these unrelated changes?")
+		if wasAnswered && confirmed {
+			revertGoModChanges(ctx)
+		}
+		return fmt.Errorf("aborted: requested package(s) not upgraded: %s", strings.Join(missing, ", "))
 	}
 
 	// For a single package, rename the branch to include the new version.

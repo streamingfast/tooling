@@ -162,11 +162,11 @@ func TestFinalBranchName(t *testing.T) {
 			expected:   "bump/dstore-to-v0.2.4-0.20260520032149-6421410d7faa",
 		},
 		{
-			name:      "single package no upgrades returns pre-bump name",
-			preBranch: "bump/dstore",
-			upgrades:  nil,
+			name:       "single package no upgrades returns pre-bump name",
+			preBranch:  "bump/dstore",
+			upgrades:   nil,
 			packageIDs: []PackageID{"github.com/streamingfast/dstore@develop"},
-			expected:  "bump/dstore",
+			expected:   "bump/dstore",
 		},
 		{
 			name:      "multiple packages returns pre-bump name",
@@ -187,6 +187,97 @@ func TestFinalBranchName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := finalBranchName(tt.preBranch, tt.upgrades, tt.packageIDs)
 			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+func TestModulePath(t *testing.T) {
+	tests := []struct {
+		name     string
+		id       string
+		expected string
+	}{
+		{
+			name:     "with version suffix",
+			id:       "github.com/streamingfast/eth-go@develop",
+			expected: "github.com/streamingfast/eth-go",
+		},
+		{
+			name:     "without version suffix",
+			id:       "github.com/streamingfast/eth-go",
+			expected: "github.com/streamingfast/eth-go",
+		},
+		{
+			name:     "pseudo version",
+			id:       "github.com/streamingfast/eth-go@v1.2.3",
+			expected: "github.com/streamingfast/eth-go",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, modulePath(tt.id))
+		})
+	}
+}
+
+func TestUnupgradedRequestedPackages(t *testing.T) {
+	tests := []struct {
+		name       string
+		packageIDs []PackageID
+		upgrades   []upgradeEntry
+		expected   []string
+	}{
+		{
+			name:       "requested package upgraded",
+			packageIDs: []PackageID{"github.com/streamingfast/eth-go@develop"},
+			upgrades: []upgradeEntry{
+				{module: "github.com/streamingfast/eth-go", fromVersion: "v1.0.0", toVersion: "v1.1.0"},
+			},
+			expected: nil,
+		},
+		{
+			name:       "requested package NOT upgraded, only transitive dep bumped",
+			packageIDs: []PackageID{"github.com/streamingfast/eth-go@develop"},
+			upgrades: []upgradeEntry{
+				{module: "github.com/streamingfast/dstore", fromVersion: "v0.1.0", toVersion: "v0.2.0"},
+			},
+			expected: []string{"github.com/streamingfast/eth-go"},
+		},
+		{
+			name: "multiple requested, one missing",
+			packageIDs: []PackageID{
+				"github.com/streamingfast/eth-go@develop",
+				"github.com/streamingfast/bstream@develop",
+			},
+			upgrades: []upgradeEntry{
+				{module: "github.com/streamingfast/bstream", fromVersion: "v0.1.0", toVersion: "v0.2.0"},
+			},
+			expected: []string{"github.com/streamingfast/eth-go"},
+		},
+		{
+			name: "multiple requested, all upgraded",
+			packageIDs: []PackageID{
+				"github.com/streamingfast/eth-go@develop",
+				"github.com/streamingfast/bstream@develop",
+			},
+			upgrades: []upgradeEntry{
+				{module: "github.com/streamingfast/eth-go", fromVersion: "v1.0.0", toVersion: "v1.1.0"},
+				{module: "github.com/streamingfast/bstream", fromVersion: "v0.1.0", toVersion: "v0.2.0"},
+			},
+			expected: nil,
+		},
+		{
+			name:       "no upgrades at all",
+			packageIDs: []PackageID{"github.com/streamingfast/eth-go@develop"},
+			upgrades:   nil,
+			expected:   []string{"github.com/streamingfast/eth-go"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, unupgradedRequestedPackages(tt.packageIDs, tt.upgrades))
 		})
 	}
 }
