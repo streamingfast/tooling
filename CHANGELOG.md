@@ -7,4 +7,6 @@
 
 ### Changed
 
+- `gh-manage-workflows`: `disable`/`enable` now gracefully skip GitHub-managed workflows (Dependabot, Pages, ... — API paths under `dynamic/`), which GitHub rejects with `HTTP 422`, printing the full path and the reason. A failing toggle no longer aborts the whole run: it is reported as a warning, the remaining workflows are processed, and the command exits non-zero at the end. `list` omits synthetic workflows and `list --all` shows the workflow path.
+
 - `go_bump --pr` now validates that the package(s) you actually requested were upgraded by `go get`. When a requested package was already at the desired version (so only unrelated transitive dependencies got bumped), the command aborts the PR flow, lists what was/wasn't upgraded, and interactively asks whether to revert the unrelated `go.mod`/`go.sum` changes before returning to the original branch.

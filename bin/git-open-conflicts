@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+option=""
+
+main() {
+  while getopts "h" opt; do
+    case $opt in
+      h) usage && exit 0;;
+      \?) usage_error "Invalid option: -$OPTARG";;
+    esac
+  done
+  shift $((OPTIND-1))
+
+  git -c "color.status=never" status | grep -E "(both modified:|both added:|deleted by)" | awk '{print $NF}' | xargs "${VISUAL:-${EDITOR:-code}}"
+}
+
+usage_error() {
+  message="$1"
+  exit_code="$2"
+
+  echo "ERROR: $message"
+  echo ""
+  usage
+  exit ${exit_code:-1}
+}
+
+usage() {
+  echo "usage: git open-conflicts <name>"
+  echo ""
+  echo "Open all files with conflicts in the current working directory"
+  echo "in 'code' or \$EDITOR environment variable if set."
+  echo ""
+  echo "If you use \$EDITOR environment variable, make sure it able to "
+  echo "open multiple files."
+  echo ""
+  echo "Options"
+  echo "    -h          Display help about this script"
+}
+
+main "$@"
