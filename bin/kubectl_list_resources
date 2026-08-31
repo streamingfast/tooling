@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Credits to Ivan Vasilyev @ https://stackoverflow.com/a/58588040/697930
+
+# Retrieve all resources by name (excluding the EXCLUDES variable, | separated list)
+EXCLUDES=${EXCLUDES:-events}
+NAMES="$(kubectl api-resources \
+                 --namespaced \
+                 --verbs list \
+                 -o name \
+           | grep -vE "^(${EXCLUDES})$" | tr '\n' , | sed -E 's/,$//')"
+
+# The flag --show-kind is optional
+kubectl get "${NAMES}" --show-kind

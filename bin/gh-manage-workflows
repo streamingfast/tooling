@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+#
+# gh-manage-workflows — manage GitHub Actions workflows via gh CLI.
+#
+# Subcommands:
+#   list                        List active workflow paths (use to build a keep-list).
+#   list --all                  List every workflow with its state.
+#   disable [--dry-run] KEEP... Disable all active workflows except the KEEP filenames.
+#   enable  [--dry-run] KEEP... Enable all disabled workflows except the KEEP filenames.
+#
+# Target repo (else auto-picks remote sf > upstream > origin):
+#   -R, --repo   owner/name     Target this repo explicitly.
+#   --remote     NAME           Derive owner/name from this git remote.
+#
+# KEEP entries are matched against the workflow file BASENAME (e.g. "ci.yml").
+#
+# Synthetic workflows (Dependabot, Pages, ... — paths under "dynamic/") cannot be
+# toggled through the API and are always skipped.
+#
+# Requires: gh (authenticated), jq. Run from inside a git repo (unless -R given).
+
+set -euo pipefail
+
+die() { echo "error: $*" >&2; exit 1; }
+
+need() { command -v "$1" >/dev/null 2>&1 || die "missing dependency: $1"; }
+
+# Target repo as "owner/name". Resolved by resolve_repo(); may be set via -R.
+REPO=""
+# Preferred remote name (override with --remote). When REPO is empty we derive
+# owner/name from this remote's URL, falling back through PREFERRED_REMOTES.
+REMOTE=""
+PREFERRED_REMOTES=(sf upstream origin)
+
+# Parse a git remote URL into "owner/name" (handles ssh + https, strips .git).
+remote_to_slug() {
+  local url="$1"
+  url="${url%.git}"
+  case "$url" in
+    git@*:*)        echo "${url#*:}" ;;                 # git@github.com:owner/name
+    ssh://*|https://*|http://*)
+                    echo "$url" | sed -E 's#^[a-z]+://[^/]+/##' ;;
+    *) die "cannot parse remote url: $1" ;;
+  esac
+}
+
+# Fill REPO. Explicit -R wins; else use --remote; else first existing preferred remote.
+resolve_repo() {
+  [ -n "$REPO" ] && return 0
+  local candidates=()
+  [ -n "$REMOTE" ] && candidates=("$REMOTE") || candidates=("${PREFERRED_REMOTES[@]}")
+  local r url
+  for r in "${candidates[@]}"; do
+    if url=$(git remote get-url "$r" 2>/dev/null); then
+      REPO=$(remote_to_slug "$url")
+      echo "target: $REPO (remote '$r')" >&2
+      return 0
+    fi
+  done
+  die "no matching remote (tried: ${candidates[*]}); pass -R owner/name"
+}
+
+# Emit "id<TAB>basename<TAB>state<TAB>path" for every workflow, optionally filtered by state.
+# $1: state filter ("active", "disabled_manually", or "" for all)
+fetch_workflows() {
+  local state_filter="$1"
+  gh api --paginate "repos/$REPO/actions/workflows" \
+    --jq '.workflows[] | [.id, (.path | split("/") | last), .state, .path] | @tsv' \
+  | if [ -n "$state_filter" ]; then awk -F'\t' -v s="$state_filter" '$3==s'; else cat; fi
+}
+
+# True if $1 (path) is a real workflow file we can toggle. GitHub also reports
+# synthetic workflows (Dependabot updates, Pages builds, ...) under paths like
+# "dynamic/dependabot/update-graph"; the API rejects enable/disable on those
+# with HTTP 422, so we skip them.
+is_togglable() {
+  case "$1" in
+    .github/workflows/*.yml|.github/workflows/*.yaml) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# True if $1 (basename) is present in the global `keep` array.
+in_keep() {
+  local f="$1" k
+  for k in ${keep[@]+"${keep[@]}"}; do
+    [ "$f" = "$k" ] && return 0
+  done
+  return 1
+}
+
+cmd_list() {
+  if [ "${1:-}" = "--all" ]; then
+    printf '%-40s %-20s %s\n' "WORKFLOW" "STATE" "PATH"
+    fetch_workflows "" | while IFS=$'\t' read -r _ file state path; do
+      printf '%-40s %-20s %s\n' "$file" "$state" "$path"
+    done
+  else
+    # Just the active basenames — copy/paste straight into a keep-list.
+    # Synthetic (non-file) workflows are omitted: they cannot be toggled.
+    fetch_workflows "active" | while IFS=$'\t' read -r _ file _ path; do
+      if is_togglable "$path"; then echo "$file"; fi
+    done
+  fi
+}
+
+# Shared driver for disable/enable.
+# $1: gh action ("disable" or "enable")
+# $2: state that makes a workflow a candidate
+# rest: flags + keep-list
+toggle() {
+  local action="$1" candidate_state="$2"; shift 2
+  local dry_run=false
+  keep=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run|-n) dry_run=true ;;
+      --) shift; break ;;
+      -*) die "unknown flag: $1" ;;
+      *) keep+=("$1") ;;
+    esac
+    shift
+  done
+  keep+=("$@")
+
+  local changed=0 skipped=0 failed=0
+  while IFS=$'\t' read -r id file state path; do
+    [ -n "$id" ] || continue
+    if in_keep "$file"; then
+      echo "skip     $file (kept)"
+    elif ! is_togglable "$path"; then
+      echo "skip     $path (GitHub-managed, cannot be ${action}d — driven by repo settings, not a workflow file)"
+      skipped=$((skipped+1))
+    elif $dry_run; then
+      echo "would $action $file"
+      changed=$((changed+1))
+    else
+      echo "$action  $file"
+      if gh workflow "$action" "$id" -R "$REPO" >/dev/null; then
+        changed=$((changed+1))
+      else
+        echo "warn     failed to $action $file (id $id), continuing" >&2
+        failed=$((failed+1))
+      fi
+    fi
+  done < <(fetch_workflows "$candidate_state")
+
+  local suffix=""
+  [ "$skipped" -gt 0 ] && suffix="$suffix, $skipped skipped (GitHub-managed)"
+  [ "$failed" -gt 0 ] && suffix="$suffix, $failed failed"
+  if $dry_run; then
+    echo "-- dry run: $changed workflow(s) would be ${action}d$suffix --"
+  else
+    echo "-- ${action}d $changed workflow(s)$suffix --"
+  fi
+  [ "$failed" -eq 0 ]
+}
+
+usage() {
+  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+  exit "${1:-0}"
+}
+
+main() {
+  need gh
+  need jq
+  # Global flags (before OR after the subcommand): -R owner/name, --remote NAME.
+  local args=() sub=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -R|--repo)    REPO="${2:?-R needs owner/name}"; shift 2 ;;
+      --remote)     REMOTE="${2:?--remote needs a name}"; shift 2 ;;
+      -h|--help|help) usage 0 ;;
+      *) if [ -z "$sub" ]; then sub="$1"; else args+=("$1"); fi; shift ;;
+    esac
+  done
+  case "$sub" in
+    list)            resolve_repo; cmd_list ${args[@]+"${args[@]}"} ;;
+    disable)         resolve_repo; toggle disable active ${args[@]+"${args[@]}"} ;;
+    enable)          resolve_repo; toggle enable disabled_manually ${args[@]+"${args[@]}"} ;;
+    "")              usage 0 ;;
+    *)               die "unknown subcommand: $sub (try --help)" ;;
+  esac
+}
+
+main "$@"
