@@ -43,12 +43,19 @@ func main() {
 			The argument can be either:
 			- A direct GCS bucket/prefix URL (starts with gs://) - deletes all files matching the prefix
 			- A filename containing individual GCS file URLs (one per line, each starting with gs://)
+
+			On buckets with object versioning enabled, a plain delete only turns the live
+			version into a noncurrent one. Use --all-versions to permanently delete every
+			generation (live and noncurrent) of each matching object. This does not affect
+			soft-delete rules: buckets with soft-delete still allow undelete after
+			--all-versions is used.
 		`),
 		ExactArgs(1),
 		Flags(func(flags *pflag.FlagSet) {
 			flags.BoolP("dry-run", "n", false, "Dry-run the call make it only output filename instead of real delete")
 			flags.BoolP("force", "f", false, "Force running the command without asking for user intervention")
 			flags.StringP("project", "p", "", "Project to use for the GCS bucket")
+			flags.Bool("all-versions", false, "Delete all versions (live and noncurrent generations) of each object, for buckets with versioning enabled")
 		}),
 		Example(`
 			# Delete all files under 'test-bucket' that matches prefix 'folder/element'
@@ -62,6 +69,9 @@ func main() {
 
 			# Dry run to see what would be deleted
 			gcs_fast_delete --dry-run gs://test-bucket/folder/element
+
+			# Permanently delete every version of all files under prefix on a versioned bucket
+			gcs_fast_delete --all-versions gs://test-bucket/folder/element
 		`),
 		Execute(executeGCSFastDelete),
 	)
@@ -94,9 +104,23 @@ func executeGCSFastDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// object identifies a GCS object, a generation of 0 means the live version.
+type object struct {
+	name       string
+	generation int64
+}
+
+func (o object) String() string {
+	if o.generation == 0 {
+		return o.name
+	}
+
+	return fmt.Sprintf("%s#%d", o.name, o.generation)
+}
+
 type FileSequence struct {
 	Tag  string
-	List func(ctx context.Context, count int) iter.Seq2[string, error]
+	List func(ctx context.Context, count int) iter.Seq2[object, error]
 }
 
 func processStream(ctx context.Context, cmd *cobra.Command, bucketName string, fileSequence FileSequence) error {
@@ -106,12 +130,12 @@ func processStream(ctx context.Context, cmd *cobra.Command, bucketName string, f
 	)
 
 	firstFiveFiles := []string{}
-	for fileName, err := range fileSequence.List(ctx, 5) {
+	for obj, err := range fileSequence.List(ctx, 5) {
 		if err != nil {
 			return fmt.Errorf("error reading file from stream: %w", err)
 		}
 
-		firstFiveFiles = append(firstFiveFiles, fileName)
+		firstFiveFiles = append(firstFiveFiles, obj.String())
 		if len(firstFiveFiles) >= 5 {
 			break
 		}
@@ -124,10 +148,16 @@ func processStream(ctx context.Context, cmd *cobra.Command, bucketName string, f
 
 	force := sflags.MustGetBool(cmd, "force")
 	dryRun := sflags.MustGetBool(cmd, "dry-run")
+	allVersions := sflags.MustGetBool(cmd, "all-versions")
 
 	if !force {
+		what := "all objects"
+		if allVersions {
+			what = "all versions (live and noncurrent) of all objects"
+		}
+
 		fileList := "- " + strings.Join(firstFiveFiles, "\n- ")
-		message := fmt.Sprintf("About to delete all objects from GCS bucket %q matching %q, sample files:\n%s\n\nDo you want to continue (dry run: %t)?", bucketName, fileSequence.Tag, fileList, dryRun)
+		message := fmt.Sprintf("About to delete %s from GCS bucket %q matching %q, sample files:\n%s\n\nDo you want to continue (dry run: %t)?", what, bucketName, fileSequence.Tag, fileList, dryRun)
 
 		if confirmed, _ := cli.PromptConfirm(message); !confirmed {
 			return fmt.Errorf("user aborted deletion for bucket %q", bucketName)
@@ -152,13 +182,13 @@ func processStream(ctx context.Context, cmd *cobra.Command, bucketName string, f
 	defer cancel()
 
 	fileCount := 0
-	for fileName, err := range fileSequence.List(ctx, Unlimited) {
+	for obj, err := range fileSequence.List(ctx, Unlimited) {
 		if err != nil {
 			return fmt.Errorf("error reading file from stream: %w", err)
 		}
 
 		fileCount++
-		jobs <- job{file: fileName, bucket: bucket}
+		jobs <- job{file: obj, bucket: bucket}
 		if fileCount%1000 == 0 {
 			zlog.Info("progress", zap.Int("processed", fileCount), zap.String("bucket", bucketName))
 		}
@@ -193,7 +223,7 @@ func processBucket(ctx context.Context, cmd *cobra.Command, bucketRaw string) er
 
 	return processStream(ctx, cmd, bucketName, FileSequence{
 		Tag: fmt.Sprintf("gcs matching %q", objectPrefix),
-		List: func(ctx context.Context, count int) iter.Seq2[string, error] {
+		List: func(ctx context.Context, count int) iter.Seq2[object, error] {
 			return listFiles(ctx, cmd, bucketName, objectPrefix, count)
 		},
 	})
@@ -232,13 +262,19 @@ func processFileList(ctx context.Context, cmd *cobra.Command, filename string) e
 		bucketFiles[bucketName] = append(bucketFiles[bucketName], objectPath)
 	}
 
+	allVersions := sflags.MustGetBool(cmd, "all-versions")
+
 	for bucketName, files := range bucketFiles {
 		err := processStream(ctx, cmd, bucketName, FileSequence{
 			Tag: fmt.Sprintf("file list from %q", filename),
-			List: func(ctx context.Context, count int) iter.Seq2[string, error] {
-				return func(yield func(string, error) bool) {
+			List: func(ctx context.Context, count int) iter.Seq2[object, error] {
+				if allVersions {
+					return listFileVersions(ctx, cmd, bucketName, files, count)
+				}
+
+				return func(yield func(object, error) bool) {
 					for i := 0; i < min(count, len(files)); i++ {
-						if !yield(files[i], ctx.Err()) {
+						if !yield(object{name: files[i]}, ctx.Err()) {
 							break
 						}
 					}
@@ -254,7 +290,7 @@ func processFileList(ctx context.Context, cmd *cobra.Command, filename string) e
 }
 
 type job struct {
-	file   string
+	file   object
 	bucket *storage.BucketHandle
 }
 
@@ -263,42 +299,49 @@ func worker(ctx context.Context, cmd *cobra.Command, _ int, wg *sync.WaitGroup, 
 	for j := range jobs {
 		err := deleteFile(ctx, cmd, j.bucket, j.file)
 		if err != nil {
-			zlog.Info("retrying file", zap.String("file", j.file))
+			zlog.Info("retrying file", zap.Stringer("file", j.file))
 			err = deleteFile(ctx, cmd, j.bucket, j.file)
 			if err != nil {
-				zlog.Info("skipping failed file", zap.String("file", j.file))
+				zlog.Info("skipping failed file", zap.Stringer("file", j.file))
 			}
 		}
 	}
 }
 
-// listFiles lists objects within specified bucket.
-func listFiles(ctx context.Context, cmd *cobra.Command, bucketName string, prefix string, limit int) iter.Seq2[string, error] {
-	zlog.Info("Listing files from bucket", zap.String("prefix", prefix))
+// listFiles lists objects within specified bucket. With --all-versions, every
+// generation of each object is listed, each with its generation set.
+func listFiles(ctx context.Context, cmd *cobra.Command, bucketName string, prefix string, limit int) iter.Seq2[object, error] {
+	allVersions := sflags.MustGetBool(cmd, "all-versions")
+
+	zlog.Info("Listing files from bucket", zap.String("prefix", prefix), zap.Bool("all_versions", allVersions))
 	it := createBucketHandle(cmd, bucketName).Objects(ctx, &storage.Query{
-		Prefix: prefix,
+		Prefix:   prefix,
+		Versions: allVersions,
 	})
 
-	return func(yield func(string, error) bool) {
+	return func(yield func(object, error) bool) {
 		count := 0
 		for {
 			if limit != -1 && count > limit {
 				return
 			}
 
-			name := ""
+			obj := object{}
 			attrs, err := it.Next()
 			if err == iterator.Done {
 				break
 			}
 
 			if err == nil {
-				name = attrs.Name
+				obj.name = attrs.Name
+				if allVersions {
+					obj.generation = attrs.Generation
+				}
 			} else {
 				err = fmt.Errorf("getting next object from bucket %q: %w", bucketName, err)
 			}
 
-			if !yield(name, err) {
+			if !yield(obj, err) {
 				break
 			}
 
@@ -307,18 +350,42 @@ func listFiles(ctx context.Context, cmd *cobra.Command, bucketName string, prefi
 	}
 }
 
-func deleteFile(ctx context.Context, cmd *cobra.Command, bucket *storage.BucketHandle, object string) error {
+// listFileVersions lists every generation of the exact objects in files.
+func listFileVersions(ctx context.Context, cmd *cobra.Command, bucketName string, files []string, limit int) iter.Seq2[object, error] {
+	return func(yield func(object, error) bool) {
+		count := 0
+		for _, file := range files {
+			for obj, err := range listFiles(ctx, cmd, bucketName, file, Unlimited) {
+				if err == nil && obj.name != file {
+					continue
+				}
+
+				if count >= limit || !yield(obj, err) {
+					return
+				}
+
+				count++
+			}
+		}
+	}
+}
+
+func deleteFile(ctx context.Context, cmd *cobra.Command, bucket *storage.BucketHandle, obj object) error {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()
 
-	o := bucket.Object(object)
+	o := bucket.Object(obj.name)
+	if obj.generation != 0 {
+		o = o.Generation(obj.generation)
+	}
+
 	dryRun := sflags.MustGetBool(cmd, "dry-run")
 
 	if dryRun {
-		fmt.Println("Would delete " + o.ObjectName())
+		fmt.Println("Would delete " + obj.String())
 	} else {
 		if err := o.Delete(ctx); err != nil {
-			return fmt.Errorf("Object(%q).Delete: %v", object, err)
+			return fmt.Errorf("Object(%q).Delete: %v", obj, err)
 		}
 	}
 
